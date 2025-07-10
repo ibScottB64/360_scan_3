@@ -1,29 +1,315 @@
+**Examining User Requirements**
 
+I'm currently breaking down the user's request. I'm identifying key elements like the need for a web app compatible with Android and iOS, and, crucially, that it needs to be delivered as a single HTML file. This is the critical constraint that shapes the entire development approach. I'm focusing on the core functionalities requested by the user to start.
+
+
+**Analyzing Sensor Integration**
+
+I'm now diving into how to implement sensor access. I'm figuring out the best time to request camera permission. I've decided to request it at the start, so the user doesn't get a surprise later. I'm researching the best practices in Javascript for this process, considering cross-platform compatibility.
+
+
+**Planning Code Implementation**
+
+I'm now structuring the code. I'll start with the basic HTML structure: a container for the instruction screen and another for the video capture screen. I'm sketching out the JavaScript flow: a function to handle the "Capture video" button click, which prompts for camera permission and then initializes the video stream. I'm also planning to use CSS for styling and positioning elements, keeping the single-file constraint in mind by embedding styles in `<style>` tags.
+
+
+**Refining the Approach**
+
+I've just finalized my initial structure: I'm prioritizing the basic camera functionality and the layout of the instructions and video capture pages. I am now incorporating SVGs for the instruction page's icons, aiming for a lightweight and visually accurate representation of the user's provided image. I'm using a simple but effective flexbox layout for the initial pages, to make it simple for me to iterate as I go forward.
+
+
+**Implementing HTML Structure**
+
+I'm now building the basic HTML layout. I'm adding the document type declaration, the `<head>` section with viewport meta tags, and the `<style>` tag for CSS. Inside the `<body>`, I'm creating two `div`s: one for the instruction screen and another, initially hidden, for the video capture screen. I'll embed the instruction screen content with icons and text.
+
+
+**Formulating JavaScript Logic**
+
+I'm now deciding how to best write the JavaScript code. I plan to create an `init` function that is called when the page loads to set up everything. Inside this, I will add an event listener on the "Capture video" button, which calls a camera initialization function. I will also write a `stopCapture` function, to stop camera streaming when necessary, such as when the user navigates back.
+
+
+**Forming Initial Questions**
+
+I'm now creating the initial questions and clarifications. I plan to understand better the camera permission requests, the SVG requirements, and how to include the overlay elements, such as the arrow. Also, I'm going to review the styling requirements to maintain the single-file constraint.
+
+
+**Forming the HTML Structure**
+
+I'm now fleshing out the HTML skeleton, focusing on the `<head>` section and the basic layout with `div`s for instruction and capture screens. I'm incorporating a `<style>` tag and initial viewport meta tags. I am also starting to build the `instructionScreen` content. I'll add an `<h1>` and the "Capture video" button inside.
+
+
+**Organizing Code and Structure**
+
+I'm now starting to put the questions into practice by structuring the entire project. I'm prioritizing a functional HTML structure with the correct tags and basic styling. I'll focus on a clear layout, using flexbox for responsiveness, and making sure that each part is clearly labelled, such as instructionScreen and captureScreen.
+
+
+**Defining Key Functions**
+
+I'm now defining the major functions that drive the app's behavior. This will include an `init` function to set things up on load, a `startVideo` function to access the camera stream, and a `stopCapture` function to shut down the stream cleanly. I'm also including all of my SVG icon paths.
+
+
+Excellent. I have a clear understanding of the first stage. I have no further questions and am ready to proceed.
+
+Based on your requirements, I have created the initial version of the app in a single HTML file.
+
+*   It includes two main "screens": an instruction screen and a video capture screen.
+*   The instruction screen is styled to closely match the image you provided, using embedded SVG icons to keep it all in one file.
+*   Clicking the **"Capture video"** button will trigger the browser's request for camera permission.
+    *   If the user grants permission, the instruction screen will be hidden, and the video capture screen will appear, showing the live feed from the phone's rear camera.
+    *   If the user denies permission, an alert will notify them.
+*   The video capture screen includes the top text bar and static visual overlays (dashed border, line, arrow) as shown in your design.
+
+Here is the code. You can copy it, save it as an `.html` file, and open it in a web browser on a smartphone to test its functionality.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Space Video Scan</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Room Scan</title>
     <style>
-      body {
-        overscroll-behavior: none;
-      }
+        /* General Body and Reset Styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #333;
+            color: #f0f0f0;
+        }
+
+        /* Base styles for the two main screens */
+        .screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* --- Instruction Screen Styles --- */
+        #instructionScreen {
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        #instructionScreen h1 {
+            font-size: 1.8rem;
+            font-weight: 500;
+            margin-bottom: 3rem;
+        }
+
+        #instructionScreen ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-width: 400px;
+        }
+
+        #instructionScreen li {
+            display: flex;
+            align-items: center;
+            text-align: left;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+
+        #instructionScreen .icon {
+            width: 32px;
+            height: 32px;
+            margin-right: 1.5rem;
+            fill: #f0f0f0;
+            flex-shrink: 0;
+        }
+
+        #startCaptureButton {
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 400px;
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #f0f0f0;
+            background-color: transparent;
+            border: 2px solid #888;
+            border-radius: 2rem;
+            cursor: pointer;
+        }
+        
+        /* --- Capture Screen Styles --- */
+        #captureScreen {
+            display: none; /* Initially hidden */
+            background-color: #000;
+        }
+
+        .capture-header {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .capture-header .icon {
+            width: 28px;
+            height: 28px;
+            margin-right: 0.75rem;
+            fill: #3498db; /* A nice blue color for the icon */
+        }
+        
+        .video-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures video fills the space without distortion */
+        }
+
+        /* --- Overlays for Video --- */
+        .scan-overlay {
+            position: absolute;
+            top: 2%;
+            left: 5%;
+            right: 5%;
+            bottom: 2%;
+            border: 3px dashed rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+        }
+        
+        .scan-arrow {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            fill: #3498db;
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            right: 5%;
+            height: 2px;
+            background-color: #e74c3c;
+            transform: translateY(-50%);
+        }
+
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.1.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "react/": "https://esm.sh/react@^19.1.0/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-gray-800">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+<body>
+
+    <!-- =========== INSTRUCTION SCREEN =========== -->
+    <div id="instructionScreen" class="screen">
+        <div class="content">
+            <h1>Testing space video scan instructions</h1>
+            <ul>
+                <li>
+                    <!-- Sun Icon -->
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2A1,1 0 0,1 13,3V4A1,1 0 0,1 12,5A1,1 0 0,1 11,4V3A1,1 0 0,1 12,2M19.07,4.93A1,1 0 0,1 20.5,6.34L19.79,7.05A1,1 0 0,1 18.38,5.64L19.07,4.93M4.93,19.07A1,1 0 0,1 6.34,20.5L7.05,19.79A1,1 0 0,1 5.64,18.38L4.93,19.07M18.38,18.38A1,1 0 0,1 19.79,19.79L20.5,19.07A1,1 0 0,1 19.07,17.66L18.38,18.38M22,12A1,1 0 0,1 21,13H20A1,1 0 0,1 19,12A1,1 0 0,1 20,11H21A1,1 0 0,1 22,12M4,12A1,1 0 0,1 3,13H2A1,1 0 0,1 1,12A1,1 0 0,1 2,11H3A1,1 0 0,1 4,12M12,19A1,1 0 0,1 11,20V21A1,1 0 0,1 12,22A1,1 0 0,1 13,21V20A1,1 0 0,1 12,19Z"/></svg>
+                    <span>Ensure testing space is well-lit</span>
+                </li>
+                <li>
+                    <!-- Desk Icon -->
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M2 12h20v2H2zm2-4h2v2H4zm14 0h2v2h-2zM2 6h20v2H2zm18 8H4v6h2v-2h12v2h2z"/></svg>
+                    <span>Stand in the middle of your testing space facing your desk.</span>
+                </li>
+                <li>
+                    <!-- Phone Icon -->
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg>
+                    <span>Hold your mobile phone in portrait mode and as level as possible.</span>
+                </li>
+                <li>
+                    <!-- Rotate Icon -->
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C14.5,20.7 9.4,20.7 6.3,17.6C5.1,16.5 4.3,15.1 4,13.5H6.1C6.4,14.6 7.1,15.6 7.9,16.4C10.3,18.8 14.3,18.8 16.7,16.4C19.1,14 19.1,10 16.7,7.6C15.6,6.5 14,6 12.3,6L13.1,6.8L11.7,8.2L8.2,4.7L11.7,1.2L13.1,2.6L12,3.8C12,3.8 12,3.9 12,4M12,19.9C11.7,19.9 11.4,20 11.1,20C6.6,20 3,16.4 3,11.9C3,11.6 3,11.3 3,11H1C1,11.3 1,11.6 1,11.9C1,17.5 5.5,22 11.1,22C11.4,22 11.7,22 12,21.9V19.9Z"/></svg>
+                    <span>When prompted start rotating to your right 360&deg;</span>
+                </li>
+                <li>
+                    <!-- Snail Icon -->
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12.2,19.9C14.6,19.9 16.6,17.9 16.6,15.5C16.6,13.1 14.6,11.1 12.2,11.1C11.2,11.1 9.9,11.9 9.9,11.9C9.9,11.9 9.3,11.4 8.2,11.1C6.2,10.5 4.1,11.9 3.5,13.9C2.8,15.9 4.2,18 6.2,18.7C6.6,18.8 7.1,18.9 7.6,18.9C8.6,18.9 9.6,18.5 10.3,17.7C10.3,17.7 10.6,18.9 12.2,19.9M18,12.5C19.4,12.5 20.5,11.4 20.5,10C20.5,8.6 19.4,7.5 18,7.5C16.6,7.5 15.5,8.6 15.5,10C15.5,11.4 16.6,12.5 18,12.5M19.5,6.5C20.6,6.5 21.5,5.6 21.5,4.5C21.5,3.4 20.6,2.5 19.5,2.5C18.4,2.5 17.5,3.4 17.5,4.5C17.5,5.6 18.4,6.5 19.5,6.5Z"/></svg>
+                    <span>Move slowly to ensure proper capturing of your environment.</span>
+                </li>
+            </ul>
+        </div>
+        <button id="startCaptureButton">Capture video</button>
+    </div>
+
+    <!-- =========== VIDEO CAPTURE SCREEN =========== -->
+    <div id="captureScreen" class="screen">
+        <div class="capture-header">
+             <!-- Video Camera Icon -->
+            <svg class="icon" viewBox="0 0 24 24"><path d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z" /></svg>
+            <span>Capture testing space video</span>
+        </div>
+        <div class="video-container">
+            <video id="videoElement" autoplay playsinline muted></video>
+            <!-- Visual Overlays -->
+            <div class="scan-overlay"></div>
+            <div class="scan-arrow">
+                 <!-- Arrow Right Icon -->
+                <svg viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z" /></svg>
+            </div>
+            <div class="scan-line"></div>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const instructionScreen = document.getElementById('instructionScreen');
+        const captureScreen = document.getElementById('captureScreen');
+        const startCaptureButton = document.getElementById('startCaptureButton');
+        const videoElement = document.getElementById('videoElement');
+
+        // Event listener for the capture button
+        startCaptureButton.addEventListener('click', () => {
+            // Call the function to start video capture
+            startVideo();
+        });
+
+        async function startVideo() {
+            // Define constraints for the video stream
+            // 'environment' tries to use the phone's rear camera
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+
+            try {
+                // Request access to the camera
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // If access is granted, attach the stream to the video element
+                videoElement.srcObject = stream;
+                
+                // Switch from the instruction screen to the capture screen
+                instructionScreen.style.display = 'none';
+                captureScreen.style.display = 'flex'; // Use 'flex' as defined in CSS
+
+            } catch (err) {
+                // Handle errors (e.g., user denies permission)
+                console.error("Error accessing camera: ", err);
+                alert("Could not access the camera. Please ensure you grant permission and are not using it in another app.");
+            }
+        }
+    </script>
+</body>
 </html>
+```
