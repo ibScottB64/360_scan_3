@@ -106,8 +106,8 @@
         }
         
         .video-container {
-            /* --- Updated: --- Increased height to reduce bottom black space */
-            height: 78vh; 
+            /* --- Updated: --- Adjusted height for a balanced layout */
+            height: 72vh; 
             width: 100%;
             position: relative;
             overflow: hidden;
@@ -136,13 +136,12 @@
             top: 50%;
             left: 10px;
             transform: translateY(-50%);
-            /* --- Updated: --- Adjusted size for new SVG aspect ratio */
-            width: 48px;
-            height: 36px;
+            /* --- Updated: --- Increased size by 50% for new SVG */
+            width: 72px;
+            height: 54px;
             transition: top 0.2s linear;
         }
 
-        /* --- Updated: --- Style for the arrow shape's fill color */
         #arrow-shape {
             transition: fill 0.2s linear;
         }
@@ -160,16 +159,15 @@
         #instructionMessageBox {
             display: none; /* Hidden by default */
             position: absolute;
-            bottom: 5%;
+            /* --- Updated: --- Raised the box from the bottom */
+            bottom: 10%;
             left: 50%;
             transform: translateX(-50%);
-            /* --- Updated: --- Reduced width to fit inside dashed lines */
             width: 75%;
             max-width: 300px;
             background-color: rgba(190, 190, 190, 0.85);
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
-            /* --- Updated: --- Text color set to black */
             color: #000;
             font-weight: 500;
             padding: 1rem;
@@ -230,9 +228,9 @@
             <!-- Visual Overlays -->
             <div class="scan-overlay"></div>
             <div id="scanArrowContainer" class="scan-arrow">
-                 <!-- --- Updated: --- New single-path SVG for a solid, outlined arrow -->
-                 <svg viewBox="0 0 40 30">
-                    <path id="arrow-shape" d="M0 12 L25 12 L25 5 L40 15 L25 25 L25 18 L0 18 Z" 
+                 <!-- --- Updated: --- Reshaped arrow SVG with shorter shaft -->
+                 <svg viewBox="0 0 23 30">
+                    <path id="arrow-shape" d="M0 12 L8 12 L8 5 L23 15 L8 25 L8 18 L0 18 Z" 
                           stroke="white" stroke-width="2.5" stroke-linejoin="round" />
                  </svg>
             </div>
@@ -253,13 +251,12 @@
         const videoElement = document.getElementById('videoElement');
         const scanArrowContainer = document.getElementById('scanArrowContainer');
         const instructionMessageBox = document.getElementById('instructionMessageBox');
-        // --- Updated: --- Get the new arrow shape element
         const arrowShape = document.getElementById('arrow-shape');
 
         // --- Constants for arrow colors
         const COLOR_GOOD = '#2ecc71'; // Green
         const COLOR_OK = '#f1c40f';   // Yellow
-        const COLOR_BAD = 'red';    // Red, changed to CSS standard color for clarity
+        const COLOR_BAD = 'red';      // Red
         
         // Event listener for the capture button
         startCaptureButton.addEventListener('click', () => {
@@ -286,7 +283,6 @@
                 arrowColor = COLOR_BAD;
             }
             
-            // --- Updated: --- Target the 'fill' style of the new arrow shape
             arrowShape.style.fill = arrowColor;
             
             instructionMessageBox.style.display = showMessage ? 'block' : 'none';
