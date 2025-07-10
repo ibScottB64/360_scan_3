@@ -237,14 +237,14 @@
             const TARGET_ANGLE = 90.0;
             const deviation = Math.abs(beta - TARGET_ANGLE);
 
-            // --- Updated: --- Determine arrow color based on tighter deviation
-            let arrowColor = COLOR_NEUTRAL; // Default to neutral (blue)
-            if (deviation > 20) {
-                arrowColor = COLOR_BAD; // Red
-            } else if (deviation > 10) {
-                arrowColor = COLOR_OK; // Yellow
-            } else if (deviation <= 5) {
+            // --- Updated: --- Determine arrow color based on corrected thresholds
+            let arrowColor;
+            if (deviation < 5) {
                 arrowColor = COLOR_GOOD; // Green
+            } else if (deviation < 10) {
+                arrowColor = COLOR_OK;   // Yellow
+            } else {
+                arrowColor = COLOR_BAD;    // Red
             }
             scanArrowContainer.style.fill = arrowColor;
 
