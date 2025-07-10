@@ -1,0 +1,7 @@
+{
+  "name": "Space Video Scan",
+  "description": "An application to guide users in capturing a 360-degree video of their testing space for analysis.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
