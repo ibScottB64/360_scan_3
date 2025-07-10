@@ -106,7 +106,6 @@
         }
         
         .video-container {
-            /* --- Updated: --- Using 90/10 flex ratio */
             flex: 9;
             width: 100%;
             position: relative;
@@ -192,7 +191,6 @@
 
         /* --- Thumbnail Area Styles --- */
         .thumbnail-area {
-            /* --- Updated: --- Using 90/10 flex ratio */
             flex: 1;
             background-color: #000;
             display: flex;
@@ -428,7 +426,7 @@
         }
 
         async function startVideo() {
-            // Reset state
+            // Reset state for a new session
             isCountdownActive = false; isCapturePhaseActive = false;
             capturedImageCount = 0; lastAlpha = null; accumulatedRotation = 0;
             if(greenZoneTimer) clearTimeout(greenZoneTimer);
@@ -440,27 +438,31 @@
             
             const constraints = { video: { facingMode: 'environment' } };
             try {
+                // --- Updated: --- This new sequence is more stable on mobile browsers ---
+                // 1. Get permissions and stream first, while on the instruction screen.
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                instructionScreen.style.display = 'none';
-                captureScreen.style.display = 'flex';
-                
-                videoElement.srcObject = stream;
-                const track = stream.getVideoTracks()[0];
-                imageCapture = new ImageCapture(track);
 
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
-                    if (permissionState === 'granted') window.addEventListener('deviceorientation', handleOrientation);
-                    else scanArrowContainer.style.display = 'none';
-                } else if (window.DeviceOrientationEvent) {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                } else {
-                    scanArrowContainer.style.display = 'none';
+                    if (permissionState !== 'granted') {
+                       alert("Orientation permission is required to continue.");
+                       return;
+                    }
                 }
+                
+                // 2. Prepare the video and capture objects.
+                videoElement.srcObject = stream;
+                const track = stream.getVideoTracks()[0];
+                imageCapture = new ImageCapture(track);
+                window.addEventListener('deviceorientation', handleOrientation);
+
+                // 3. Only switch screens when everything is ready.
+                instructionScreen.style.display = 'none';
+                captureScreen.style.display = 'flex';
+
             } catch (err) {
-                console.error("Error accessing camera: ", err);
-                alert("Could not access camera. Please grant permission.");
+                console.error("Error accessing media devices: ", err);
+                alert("Could not access the camera or sensors. Please grant permission.");
             }
         }
     </script>
