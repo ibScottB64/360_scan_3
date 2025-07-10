@@ -106,8 +106,8 @@
         }
         
         .video-container {
-            /* --- Updated: --- Set a specific height to reduce frame size */
-            height: 65vh; 
+            /* --- Updated: --- Increased height to reduce bottom black space */
+            height: 78vh; 
             width: 100%;
             position: relative;
             overflow: hidden;
@@ -136,14 +136,14 @@
             top: 50%;
             left: 10px;
             transform: translateY(-50%);
-            width: 48px; /* --- Updated: --- Adjusted size for new SVG */
-            height: 48px;
-            /* Add a transition for smoother movement */
+            /* --- Updated: --- Adjusted size for new SVG aspect ratio */
+            width: 48px;
+            height: 36px;
             transition: top 0.2s linear;
         }
 
-        /* --- New: --- Style for the inner, colored part of the arrow */
-        #arrow-fill-path {
+        /* --- Updated: --- Style for the arrow shape's fill color */
+        #arrow-shape {
             transition: fill 0.2s linear;
         }
 
@@ -157,19 +157,21 @@
             transform: translateY(-50%);
         }
         
-        /* --- New: --- Style for the instruction message box */
         #instructionMessageBox {
             display: none; /* Hidden by default */
             position: absolute;
             bottom: 5%;
             left: 50%;
             transform: translateX(-50%);
-            width: 85%;
-            max-width: 350px;
-            background-color: rgba(90, 90, 90, 0.85);
+            /* --- Updated: --- Reduced width to fit inside dashed lines */
+            width: 75%;
+            max-width: 300px;
+            background-color: rgba(190, 190, 190, 0.85);
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
-            color: #fff;
+            /* --- Updated: --- Text color set to black */
+            color: #000;
+            font-weight: 500;
             padding: 1rem;
             border-radius: 15px;
             text-align: center;
@@ -228,14 +230,13 @@
             <!-- Visual Overlays -->
             <div class="scan-overlay"></div>
             <div id="scanArrowContainer" class="scan-arrow">
-                 <!-- --- New: --- Bolder, two-part SVG arrow -->
-                <svg viewBox="0 0 32 32">
-                    <path stroke="white" stroke-width="3" stroke-linejoin="round" fill="none" d="M4 16 L28 16 L18 7 M28 16 L18 25"></path>
-                    <path id="arrow-fill-path" fill="#e74c3c" d="M4 16 L28 16 L18 7 M28 16 L18 25"></path>
-                </svg>
+                 <!-- --- Updated: --- New single-path SVG for a solid, outlined arrow -->
+                 <svg viewBox="0 0 40 30">
+                    <path id="arrow-shape" d="M0 12 L25 12 L25 5 L40 15 L25 25 L25 18 L0 18 Z" 
+                          stroke="white" stroke-width="2.5" stroke-linejoin="round" />
+                 </svg>
             </div>
             <div class="scan-line"></div>
-            <!-- --- New: --- Instruction message box -->
             <div id="instructionMessageBox">
                 Get ready to slowly pan the camera in the direction of the arrow, stay on the red line, and keep steady for best results.
             </div>
@@ -251,14 +252,14 @@
         const startCaptureButton = document.getElementById('startCaptureButton');
         const videoElement = document.getElementById('videoElement');
         const scanArrowContainer = document.getElementById('scanArrowContainer');
-        // --- New: --- Get the new elements
         const instructionMessageBox = document.getElementById('instructionMessageBox');
-        const arrowFillPath = document.getElementById('arrow-fill-path');
+        // --- Updated: --- Get the new arrow shape element
+        const arrowShape = document.getElementById('arrow-shape');
 
         // --- Constants for arrow colors
         const COLOR_GOOD = '#2ecc71'; // Green
         const COLOR_OK = '#f1c40f';   // Yellow
-        const COLOR_BAD = '#e74c3c';    // Red
+        const COLOR_BAD = 'red';    // Red, changed to CSS standard color for clarity
         
         // Event listener for the capture button
         startCaptureButton.addEventListener('click', () => {
@@ -278,17 +279,16 @@
 
             if (deviation < 5) {
                 arrowColor = COLOR_GOOD;
-                showMessage = true; // --- New: --- Flag to show message
+                showMessage = true;
             } else if (deviation < 10) {
                 arrowColor = COLOR_OK;
             } else {
                 arrowColor = COLOR_BAD;
             }
             
-            // --- Updated: --- Target the inner path of the new SVG for color change
-            arrowFillPath.style.fill = arrowColor;
+            // --- Updated: --- Target the 'fill' style of the new arrow shape
+            arrowShape.style.fill = arrowColor;
             
-            // --- New: --- Show or hide the instruction message
             instructionMessageBox.style.display = showMessage ? 'block' : 'none';
 
             // Update arrow position
