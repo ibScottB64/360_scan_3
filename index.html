@@ -328,12 +328,15 @@
         startCaptureButton.addEventListener('click', () => startVideo());
 
         function updateArrowPosition() {
-            const lastCapturedAngleIndex = capturedImageCount - 1;
-            const lastCapturedAngle = CAPTURE_ANGLES[lastCapturedAngleIndex];
+            // This function now positions the arrow based on the LAST captured angle.
+            // If 0 images are taken, it stays at the start. If 1 is taken, it moves to the 0-degree mark, etc.
+            const lastCapturedAngle = (capturedImageCount > 0) ? CAPTURE_ANGLES[capturedImageCount - 1] : -1;
             
             const startLeftPercent = 10, endLeftPercent = 90;
             const leftRange = endLeftPercent - startLeftPercent;
-            const currentLeftPercent = startLeftPercent + (lastCapturedAngle / 360) * leftRange;
+            // Use lastCapturedAngle, but if it's -1 (before first pic), default to 0 for positioning.
+            const rotationForArrow = (lastCapturedAngle === -1) ? 0 : lastCapturedAngle;
+            const currentLeftPercent = startLeftPercent + (rotationForArrow / 360) * leftRange;
             scanArrowContainer.style.left = `calc(${currentLeftPercent}% - 29px)`;
         }
 
@@ -347,7 +350,7 @@
                 thumbnailContainer.appendChild(img);
                 
                 capturedImageCount++;
-                updateArrowPosition();
+                updateArrowPosition(); // Move the arrow after a successful capture
 
                 if (capturedImageCount >= TOTAL_IMAGES) finishCapture();
             } catch (error) { console.error("Error taking photo: ", error); }
@@ -357,7 +360,8 @@
             isCapturePhaseActive = true;
             scanArrowContainer.style.display = 'block';
             progressCircle.style.display = 'block';
-            // Do not take a picture here; handleOrientation will trigger the first one at angle 0.
+            // --- Updated: --- Immediately take the first picture to start the process.
+            takePicture();
         }
         
         function finishCapture() {
@@ -389,72 +393,49 @@
         }
 
         function handleOrientation(event) {
-            if (isCountdownActive || !isCapturePhaseActive) return;
-
+            // --- Updated: --- Simplified to a single function again for clarity
+            if (isCountdownActive) return;
             const { beta, alpha } = event;
             if (beta === null || alpha === null) return;
             
-            const tiltDeviation = Math.abs(beta - 90.0);
+            const TARGET_ANGLE = 90.0;
+            const SENSITIVITY = 1.5;
+            const tiltDeviation = Math.abs(beta - TARGET_ANGLE);
             
-            // --- Updated: --- This is the new, correct rotation logic ---
-            // Only process rotation if the phone is held relatively level
-            if (tiltDeviation < 15) { // A more generous tilt allowance
-                if (startHeading === null) {
-                    startHeading = alpha;
-                    lastAlpha = alpha;
+            if (!isCapturePhaseActive) {
+                // Phase 1: Tilt Setup
+                arrowShape.style.fill = (tiltDeviation < 5) ? COLOR_GOOD : (tiltDeviation < 10) ? COLOR_OK : COLOR_BAD;
+                if (tiltDeviation < 5) {
+                    instructionMessageBox.style.display = 'block';
+                    if (greenZoneTimer === null) greenZoneTimer = setTimeout(startCountdownSequence, 4000);
+                } else {
+                    instructionMessageBox.style.display = 'none';
+                    if (greenZoneTimer) { clearTimeout(greenZoneTimer); greenZoneTimer = null; }
                 }
-                
-                let totalRotation = alpha - startHeading;
-                if (totalRotation < 0) totalRotation += 360;
+                const offset = beta - TARGET_ANGLE;
+                scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
 
-                let delta = alpha - lastAlpha;
-                if (Math.abs(delta) > 10 && Math.abs(delta) < 350) { // Check for fast rotation
-                    slowDownMessage.style.display = 'block';
-                    if(slowDownTimer) clearTimeout(slowDownTimer);
-                    slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
-                }
-                lastAlpha = alpha;
+            } else {
+                // Phase 2: Rotation Capture
+                // Only process rotation if the phone is held relatively level
+                if (tiltDeviation < 15) {
+                    if (startHeading === null) startHeading = alpha;
+                    
+                    let totalRotation = alpha - startHeading;
+                    if (totalRotation < 0) totalRotation += 360;
 
-                // Update smooth progress circle UI
-                const circumference = 282.7;
-                progressRing.style.strokeDashoffset = circumference - (totalRotation / 360) * circumference;
-                
-                // Check if we need to capture the next image
-                if (capturedImageCount < TOTAL_IMAGES) {
-                    const nextTargetAngle = CAPTURE_ANGLES[capturedImageCount];
-                    if (totalRotation >= nextTargetAngle) {
-                        takePicture();
+                    // Update smooth progress circle UI
+                    const circumference = 282.7;
+                    progressRing.style.strokeDashoffset = circumference - (totalRotation / 360) * circumference;
+                    
+                    // Check if we need to capture the next image
+                    if (capturedImageCount < TOTAL_IMAGES) {
+                        const nextTargetAngle = CAPTURE_ANGLES[capturedImageCount];
+                        if (totalRotation >= nextTargetAngle) {
+                            takePicture();
+                        }
                     }
                 }
-            }
-        }
-        
-        function handleTiltSetup(event) {
-            if (isCountdownActive || isCapturePhaseActive) return;
-            const { beta } = event;
-            if (beta === null) return;
-
-            const TARGET_ANGLE = 90.0, SENSITIVITY = 1.5;
-            const deviation = Math.abs(beta - TARGET_ANGLE);
-            arrowShape.style.fill = (deviation < 5) ? COLOR_GOOD : (deviation < 10) ? COLOR_OK : COLOR_BAD;
-
-            if (deviation < 5) {
-                instructionMessageBox.style.display = 'block';
-                if (greenZoneTimer === null) greenZoneTimer = setTimeout(startCountdownSequence, 4000);
-            } else {
-                instructionMessageBox.style.display = 'none';
-                if (greenZoneTimer) { clearTimeout(greenZoneTimer); greenZoneTimer = null; }
-            }
-            const offset = beta - TARGET_ANGLE;
-            scanArrowContainer.style.left = '10px'; // Keep arrow on left
-            scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
-        }
-
-        function masterOrientationHandler(event) {
-            if (isCapturePhaseActive) {
-                handleOrientation(event);
-            } else {
-                handleTiltSetup(event);
             }
         }
 
@@ -495,7 +476,7 @@
                 videoElement.srcObject = stream;
                 const track = stream.getVideoTracks()[0];
                 imageCapture = new ImageCapture(track);
-                window.addEventListener('deviceorientation', masterOrientationHandler);
+                window.addEventListener('deviceorientation', handleOrientation);
 
                 instructionScreen.style.display = 'none';
                 captureScreen.style.display = 'flex';
