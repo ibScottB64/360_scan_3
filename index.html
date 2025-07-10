@@ -317,7 +317,7 @@
         let isCapturePhaseActive = false, capturedImageCount = 0;
         let lastAlpha = null, slowDownTimer = null;
         let accumulatedRotation = 0;
-        let isStarting = false; // --- New: --- Busy flag for the start button
+        let isStarting = false;
 
         // Constants
         const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
@@ -432,7 +432,6 @@
         }
 
         async function startVideo() {
-            // --- Updated: --- Definitive fix for unresponsive button
             if (isStarting) return;
             isStarting = true;
             startCaptureButton.disabled = true;
@@ -457,14 +456,13 @@
             }
 
             try {
-                const [stream, orientationState] = await Promise.all([
-                    navigator.mediaDevices.getUserMedia(constraints),
-                    getOrientationPermission()
-                ]);
+                // --- Updated: --- Request permissions sequentially to prevent freezing
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const orientationState = await getOrientationPermission();
                 
                 if (orientationState !== 'granted') {
                    alert("Orientation permission is required to continue.");
-                   // Use finally block for cleanup
+                   // The finally block will still run for cleanup
                    return;
                 }
                 
@@ -480,7 +478,7 @@
                 console.error("Error accessing media devices: ", err);
                 alert("Could not access the camera or sensors. Please grant permission.");
             } finally {
-                // This block executes regardless of success or failure.
+                // This block guarantees the button is re-enabled and state is reset.
                 isStarting = false;
                 startCaptureButton.disabled = false;
             }
