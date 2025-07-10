@@ -317,7 +317,7 @@
         let isCapturePhaseActive = false, capturedImageCount = 0;
         let lastAlpha = null, slowDownTimer = null, startHeading = null;
         let isStarting = false;
-
+        
         // Constants
         const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
         const TOTAL_IMAGES = 6;
@@ -395,17 +395,21 @@
                 scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
             } else {
                 // --- Updated: --- This is the new, correct rotation logic ---
-                if (startHeading === null) startHeading = alpha;
-                if (lastAlpha === null) lastAlpha = alpha;
+                if (startHeading === null) {
+                    startHeading = alpha;
+                    lastAlpha = alpha;
+                }
                 
                 scanArrowContainer.style.top = '50%';
                 arrowShape.style.fill = '#3498db';
 
                 let totalRotation = alpha - startHeading;
-                if (totalRotation < 0) totalRotation += 360;
+                if (totalRotation < 0) { // Handle wrap-around
+                    totalRotation += 360;
+                }
 
                 let delta = alpha - lastAlpha;
-                if (Math.abs(delta) > 5) { // Check for fast rotation speed
+                if (Math.abs(delta) > 5 && Math.abs(delta) < 355) { // Check for fast rotation, ignore wrap-around jump
                     slowDownMessage.style.display = 'block';
                     if(slowDownTimer) clearTimeout(slowDownTimer);
                     slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
@@ -454,7 +458,7 @@
             }
 
             try {
-                // --- Updated: --- Request permissions sequentially
+                // Request permissions sequentially
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 const orientationState = await getOrientationPermission();
                 
