@@ -197,6 +197,8 @@
             padding: 1vh 10px;
             box-sizing: border-box;
             overflow-x: auto;
+            /* --- Updated: --- This prevents the container from growing taller than its allocated flex space. */
+            min-height: 0;
         }
         .thumbnail-area img {
             height: 100%;
@@ -307,8 +309,9 @@
 
         // State Variables
         let greenZoneTimer = null, isCountdownActive = false, imageCapture = null;
-        let isCapturePhaseActive = false, startHeading = null, capturedImageCount = 0;
-        let lastAlpha = 0, slowDownTimer = null;
+        let isCapturePhaseActive = false, capturedImageCount = 0;
+        let lastAlpha = null, slowDownTimer = null;
+        let accumulatedRotation = 0; // --- Updated: --- Tracks total clockwise rotation
 
         // Constants
         const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
@@ -386,38 +389,37 @@
                 const offset = beta - TARGET_ANGLE;
                 scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
             } else {
-                if (startHeading === null) startHeading = alpha;
+                if (lastAlpha === null) lastAlpha = alpha;
                 
                 scanArrowContainer.style.top = '50%';
                 arrowShape.style.fill = '#3498db';
 
-                // --- Updated: --- Corrected rotation logic
-                let totalRotation = alpha - startHeading;
-                // Handle the wrap-around from 359 to 0 degrees
-                if (totalRotation < -180) totalRotation += 360; 
-                // A small turn left should not count as progress
-                if (totalRotation < 0) totalRotation = 0;
+                // --- Updated: --- Corrected and simplified rotation logic
+                let delta = alpha - lastAlpha;
+                if (delta < -180) delta += 360; // Handle wrap-around for clockwise rotation
+                if (delta > 180) delta -= 360; // Handle wrap-around for counter-clockwise
+                
+                if (delta > 0 && delta < 45) { // Only accumulate clockwise rotation, ignore huge jumps
+                    accumulatedRotation += delta;
+                }
+                lastAlpha = alpha;
 
                 const startLeftPercent = 10, endLeftPercent = 90;
                 const leftRange = endLeftPercent - startLeftPercent;
-                const currentLeftPercent = startLeftPercent + (totalRotation / 360) * leftRange;
-                scanArrowContainer.style.left = `calc(${currentLeftPercent}% - 29px)`;
+                const currentLeftPercent = startLeftPercent + (accumulatedRotation / 360) * leftRange;
+                scanArrowContainer.style.left = `calc(${Math.min(endLeftPercent, currentLeftPercent)}% - 29px)`;
 
-                let angleDiff = Math.abs(alpha - lastAlpha);
-                if (angleDiff > 180) angleDiff = 360 - angleDiff;
-                if (angleDiff > 5) {
+                if (delta > 5) { // Check for fast rotation speed
                     slowDownMessage.style.display = 'block';
                     if(slowDownTimer) clearTimeout(slowDownTimer);
                     slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
                 }
-                lastAlpha = alpha;
 
                 const circumference = 282.7;
-                progressRing.style.strokeDashoffset = circumference - (totalRotation / 360) * circumference;
+                progressRing.style.strokeDashoffset = circumference - (accumulatedRotation / 360) * circumference;
                 
-                // --- Updated: --- Refined capture condition
-                const segmentsCaptured = capturedImageCount - 1;
-                const segmentsPassed = Math.floor(totalRotation / CAPTURE_ANGLE_INTERVAL);
+                const segmentsCaptured = capturedImageCount;
+                const segmentsPassed = Math.floor(accumulatedRotation / CAPTURE_ANGLE_INTERVAL) + 1;
                 if (segmentsPassed > segmentsCaptured && capturedImageCount < TOTAL_IMAGES) {
                     takePicture();
                 }
@@ -425,8 +427,9 @@
         }
 
         async function startVideo() {
+            // Reset state
             isCountdownActive = false; isCapturePhaseActive = false;
-            capturedImageCount = 0; startHeading = null;
+            capturedImageCount = 0; lastAlpha = null; accumulatedRotation = 0;
             if(greenZoneTimer) clearTimeout(greenZoneTimer);
             greenZoneTimer = null;
             thumbnailContainer.innerHTML = '';
@@ -436,14 +439,14 @@
             
             const constraints = { video: { facingMode: 'environment' } };
             try {
-                // --- Updated: --- Get stream first before changing the UI
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                videoElement.srcObject = stream;
-                const track = stream.getVideoTracks()[0];
-                imageCapture = new ImageCapture(track);
                 
                 instructionScreen.style.display = 'none';
                 captureScreen.style.display = 'flex';
+                
+                videoElement.srcObject = stream;
+                const track = stream.getVideoTracks()[0];
+                imageCapture = new ImageCapture(track);
 
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
