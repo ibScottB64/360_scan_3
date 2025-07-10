@@ -315,30 +315,16 @@
         // State Variables
         let greenZoneTimer = null, isCountdownActive = false, imageCapture = null;
         let isCapturePhaseActive = false, capturedImageCount = 0;
-        let lastAlpha = null, slowDownTimer = null, startHeading = null;
+        let lastAlpha = null, slowDownTimer = null;
+        let accumulatedRotation = 0;
         let isStarting = false;
-        
-        // --- Updated: --- Using a predefined table of angles
-        const CAPTURE_ANGLES = [0, 60, 120, 180, 240, 300];
-        const TOTAL_IMAGES = CAPTURE_ANGLES.length;
 
         // Constants
         const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
-        
-        startCaptureButton.addEventListener('click', () => startVideo());
+        const TOTAL_IMAGES = 6;
+        const CAPTURE_ANGLE_INTERVAL = 360 / TOTAL_IMAGES;
 
-        function updateArrowPosition() {
-            // This function now positions the arrow based on the LAST captured angle.
-            // If 0 images are taken, it stays at the start. If 1 is taken, it moves to the 0-degree mark, etc.
-            const lastCapturedAngle = (capturedImageCount > 0) ? CAPTURE_ANGLES[capturedImageCount - 1] : -1;
-            
-            const startLeftPercent = 10, endLeftPercent = 90;
-            const leftRange = endLeftPercent - startLeftPercent;
-            // Use lastCapturedAngle, but if it's -1 (before first pic), default to 0 for positioning.
-            const rotationForArrow = (lastCapturedAngle === -1) ? 0 : lastCapturedAngle;
-            const currentLeftPercent = startLeftPercent + (rotationForArrow / 360) * leftRange;
-            scanArrowContainer.style.left = `calc(${currentLeftPercent}% - 29px)`;
-        }
+        startCaptureButton.addEventListener('click', () => startVideo());
 
         async function takePicture() {
             if (!imageCapture || capturedImageCount >= TOTAL_IMAGES) return;
@@ -348,9 +334,7 @@
                 const img = document.createElement('img');
                 img.src = imageUrl;
                 thumbnailContainer.appendChild(img);
-                
                 capturedImageCount++;
-                updateArrowPosition(); // Move the arrow after a successful capture
 
                 if (capturedImageCount >= TOTAL_IMAGES) finishCapture();
             } catch (error) { console.error("Error taking photo: ", error); }
@@ -360,7 +344,6 @@
             isCapturePhaseActive = true;
             scanArrowContainer.style.display = 'block';
             progressCircle.style.display = 'block';
-            // --- Updated: --- Immediately take the first picture to start the process.
             takePicture();
         }
         
@@ -393,19 +376,16 @@
         }
 
         function handleOrientation(event) {
-            // --- Updated: --- Simplified to a single function again for clarity
             if (isCountdownActive) return;
             const { beta, alpha } = event;
             if (beta === null || alpha === null) return;
-            
-            const TARGET_ANGLE = 90.0;
-            const SENSITIVITY = 1.5;
-            const tiltDeviation = Math.abs(beta - TARGET_ANGLE);
-            
+
             if (!isCapturePhaseActive) {
-                // Phase 1: Tilt Setup
-                arrowShape.style.fill = (tiltDeviation < 5) ? COLOR_GOOD : (tiltDeviation < 10) ? COLOR_OK : COLOR_BAD;
-                if (tiltDeviation < 5) {
+                const TARGET_ANGLE = 90.0, SENSITIVITY = 1.5;
+                const deviation = Math.abs(beta - TARGET_ANGLE);
+                arrowShape.style.fill = (deviation < 5) ? COLOR_GOOD : (deviation < 10) ? COLOR_OK : COLOR_BAD;
+
+                if (deviation < 5) {
                     instructionMessageBox.style.display = 'block';
                     if (greenZoneTimer === null) greenZoneTimer = setTimeout(startCountdownSequence, 4000);
                 } else {
@@ -414,27 +394,39 @@
                 }
                 const offset = beta - TARGET_ANGLE;
                 scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
-
             } else {
-                // Phase 2: Rotation Capture
-                // Only process rotation if the phone is held relatively level
-                if (tiltDeviation < 15) {
-                    if (startHeading === null) startHeading = alpha;
-                    
-                    let totalRotation = alpha - startHeading;
-                    if (totalRotation < 0) totalRotation += 360;
+                if (lastAlpha === null) lastAlpha = alpha;
+                
+                scanArrowContainer.style.top = '50%';
+                arrowShape.style.fill = '#3498db';
 
-                    // Update smooth progress circle UI
-                    const circumference = 282.7;
-                    progressRing.style.strokeDashoffset = circumference - (totalRotation / 360) * circumference;
-                    
-                    // Check if we need to capture the next image
-                    if (capturedImageCount < TOTAL_IMAGES) {
-                        const nextTargetAngle = CAPTURE_ANGLES[capturedImageCount];
-                        if (totalRotation >= nextTargetAngle) {
-                            takePicture();
-                        }
-                    }
+                let delta = alpha - lastAlpha;
+                if (delta < -180) delta += 360; 
+                if (delta > 180) delta -= 360;
+                
+                if (delta > 0 && delta < 45) {
+                    accumulatedRotation += delta;
+                }
+                lastAlpha = alpha;
+
+                const startLeftPercent = 10, endLeftPercent = 90;
+                const leftRange = endLeftPercent - startLeftPercent;
+                const currentLeftPercent = startLeftPercent + (accumulatedRotation / 360) * leftRange;
+                scanArrowContainer.style.left = `calc(${Math.min(endLeftPercent, currentLeftPercent)}% - 29px)`;
+
+                if (delta > 5) {
+                    slowDownMessage.style.display = 'block';
+                    if(slowDownTimer) clearTimeout(slowDownTimer);
+                    slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
+                }
+
+                const circumference = 282.7;
+                progressRing.style.strokeDashoffset = circumference - (accumulatedRotation / 360) * circumference;
+                
+                const segmentsCaptured = capturedImageCount;
+                const segmentsToCapture = Math.floor(accumulatedRotation / CAPTURE_ANGLE_INTERVAL) + 1;
+                if (segmentsToCapture > segmentsCaptured && capturedImageCount < TOTAL_IMAGES) {
+                    takePicture();
                 }
             }
         }
@@ -444,9 +436,9 @@
             isStarting = true;
             startCaptureButton.disabled = true;
 
-            // Reset state
+            // Reset state for a new session
             isCountdownActive = false; isCapturePhaseActive = false;
-            capturedImageCount = 0; lastAlpha = null; startHeading = null;
+            capturedImageCount = 0; lastAlpha = null; accumulatedRotation = 0;
             if(greenZoneTimer) clearTimeout(greenZoneTimer);
             greenZoneTimer = null;
             thumbnailContainer.innerHTML = '';
@@ -464,13 +456,14 @@
             }
 
             try {
-                // Request permissions sequentially
+                // --- Updated: --- Request permissions sequentially to prevent freezing
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 const orientationState = await getOrientationPermission();
                 
                 if (orientationState !== 'granted') {
                    alert("Orientation permission is required to continue.");
-                   return; // The 'finally' block will still execute
+                   // The finally block will still run for cleanup
+                   return;
                 }
                 
                 videoElement.srcObject = stream;
@@ -485,6 +478,7 @@
                 console.error("Error accessing media devices: ", err);
                 alert("Could not access the camera or sensors. Please grant permission.");
             } finally {
+                // This block guarantees the button is re-enabled and state is reset.
                 isStarting = false;
                 startCaptureButton.disabled = false;
             }
