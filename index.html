@@ -249,9 +249,6 @@
         const instructionMessageBox = document.getElementById('instructionMessageBox');
         const arrowShape = document.getElementById('arrow-shape');
 
-        // --- New: --- Variable to store the calibrated center angle
-        let calibratedTargetAngle = null;
-
         // --- Constants for arrow colors
         const COLOR_GOOD = '#2ecc71'; // Green
         const COLOR_OK = '#f1c40f';   // Yellow
@@ -262,18 +259,18 @@
             startVideo();
         });
 
-        // --- Function to handle device orientation changes
+        // --- Updated: --- Function to handle device orientation changes
         function handleOrientation(event) {
             const beta = event.beta; 
             if (beta === null) return;
 
-            // --- Updated: --- Calibrate on the first reading
-            if (calibratedTargetAngle === null) {
-                calibratedTargetAngle = beta;
-            }
+            // Define the absolute target angle for a vertical phone
+            const TARGET_ANGLE = 90.0;
+            // Define a sensitivity multiplier for the arrow's movement
+            const SENSITIVITY = 1.5;
 
-            // --- Updated: --- Calculate deviation from the *calibrated* center
-            const deviation = Math.abs(beta - calibratedTargetAngle);
+            // Calculate deviation from the absolute target for color changes
+            const deviation = Math.abs(beta - TARGET_ANGLE);
 
             let arrowColor;
             let showMessage = false;
@@ -288,23 +285,18 @@
             }
             
             arrowShape.style.fill = arrowColor;
-            
             instructionMessageBox.style.display = showMessage ? 'block' : 'none';
 
-            // --- Updated: --- New position logic based on calibrated center
-            // Calculate the offset from our calibrated center point
-            const offset = beta - calibratedTargetAngle;
-            // Start at 50% and apply the offset. A positive offset (tilted back) moves the arrow down.
-            const rawTopPercent = 50 + offset;
-            // Clamp the value to keep the arrow from going off-screen
+            // Calculate the directional offset from the target
+            const offset = beta - TARGET_ANGLE;
+            // The arrow starts at 50% and moves based on the offset multiplied by our sensitivity
+            const rawTopPercent = 50 + (offset * SENSITIVITY);
+            // Clamp the value to keep the arrow from going too far up or down
             const clampedTopPercent = Math.max(5, Math.min(95, rawTopPercent));
             scanArrowContainer.style.top = `${clampedTopPercent}%`;
         }
 
         async function startVideo() {
-            // --- New: --- Reset calibration on each start
-            calibratedTargetAngle = null;
-            
             const constraints = {
                 video: {
                     facingMode: 'environment',
