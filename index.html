@@ -84,6 +84,7 @@
         #captureScreen {
             display: none; /* Initially hidden */
             background-color: #000;
+            justify-content: flex-start; /* Align content to the top */
         }
 
         .capture-header {
@@ -94,6 +95,7 @@
             color: #f0f0f0;
             font-size: 1.1rem;
             flex-shrink: 0;
+            z-index: 10;
         }
 
         .capture-header .icon {
@@ -104,9 +106,12 @@
         }
         
         .video-container {
-            flex-grow: 1;
+            /* --- Updated: --- Set a specific height to reduce frame size */
+            height: 65vh; 
+            width: 100%;
             position: relative;
             overflow: hidden;
+            background-color: #111; /* Fallback color */
         }
 
         #videoElement {
@@ -131,11 +136,15 @@
             top: 50%;
             left: 10px;
             transform: translateY(-50%);
-            width: 40px;
-            height: 40px;
-            fill: #3498db;
+            width: 48px; /* --- Updated: --- Adjusted size for new SVG */
+            height: 48px;
             /* Add a transition for smoother movement */
-            transition: top 0.2s linear, fill 0.2s linear;
+            transition: top 0.2s linear;
+        }
+
+        /* --- New: --- Style for the inner, colored part of the arrow */
+        #arrow-fill-path {
+            transition: fill 0.2s linear;
         }
 
         .scan-line {
@@ -146,6 +155,27 @@
             height: 2px;
             background-color: #e74c3c;
             transform: translateY(-50%);
+        }
+        
+        /* --- New: --- Style for the instruction message box */
+        #instructionMessageBox {
+            display: none; /* Hidden by default */
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 350px;
+            background-color: rgba(90, 90, 90, 0.85);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            color: #fff;
+            padding: 1rem;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            z-index: 20;
         }
 
     </style>
@@ -190,7 +220,6 @@
     <!-- =========== VIDEO CAPTURE SCREEN =========== -->
     <div id="captureScreen" class="screen">
         <div class="capture-header">
-             <!-- Video Camera Icon -->
             <svg class="icon" viewBox="0 0 24 24"><path d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z" /></svg>
             <span>Capture testing space video</span>
         </div>
@@ -199,11 +228,20 @@
             <!-- Visual Overlays -->
             <div class="scan-overlay"></div>
             <div id="scanArrowContainer" class="scan-arrow">
-                 <!-- Arrow Right Icon -->
-                <svg viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z" /></svg>
+                 <!-- --- New: --- Bolder, two-part SVG arrow -->
+                <svg viewBox="0 0 32 32">
+                    <path stroke="white" stroke-width="3" stroke-linejoin="round" fill="none" d="M4 16 L28 16 L18 7 M28 16 L18 25"></path>
+                    <path id="arrow-fill-path" fill="#e74c3c" d="M4 16 L28 16 L18 7 M28 16 L18 25"></path>
+                </svg>
             </div>
             <div class="scan-line"></div>
+            <!-- --- New: --- Instruction message box -->
+            <div id="instructionMessageBox">
+                Get ready to slowly pan the camera in the direction of the arrow, stay on the red line, and keep steady for best results.
+            </div>
         </div>
+        <!-- This empty div is the black space below the video for future thumbnails -->
+        <div class="thumbnail-area" style="flex-grow: 1; background-color: #000;"></div>
     </div>
 
     <script>
@@ -213,53 +251,53 @@
         const startCaptureButton = document.getElementById('startCaptureButton');
         const videoElement = document.getElementById('videoElement');
         const scanArrowContainer = document.getElementById('scanArrowContainer');
+        // --- New: --- Get the new elements
+        const instructionMessageBox = document.getElementById('instructionMessageBox');
+        const arrowFillPath = document.getElementById('arrow-fill-path');
 
         // --- Constants for arrow colors
         const COLOR_GOOD = '#2ecc71'; // Green
         const COLOR_OK = '#f1c40f';   // Yellow
         const COLOR_BAD = '#e74c3c';    // Red
-        const COLOR_NEUTRAL = '#3498db'; // Blue (Default)
-
+        
         // Event listener for the capture button
         startCaptureButton.addEventListener('click', () => {
-            // Call the function to start video capture
             startVideo();
         });
 
         // --- Function to handle device orientation changes
         function handleOrientation(event) {
-            // Beta is the front-to-back tilt. 90 is vertical.
             const beta = event.beta; 
-            
-            // If beta is null, we can't do anything.
             if (beta === null) return;
 
             const TARGET_ANGLE = 90.0;
             const deviation = Math.abs(beta - TARGET_ANGLE);
 
-            // --- Updated: --- Determine arrow color based on corrected thresholds
             let arrowColor;
+            let showMessage = false;
+
             if (deviation < 5) {
-                arrowColor = COLOR_GOOD; // Green
+                arrowColor = COLOR_GOOD;
+                showMessage = true; // --- New: --- Flag to show message
             } else if (deviation < 10) {
-                arrowColor = COLOR_OK;   // Yellow
+                arrowColor = COLOR_OK;
             } else {
-                arrowColor = COLOR_BAD;    // Red
+                arrowColor = COLOR_BAD;
             }
-            scanArrowContainer.style.fill = arrowColor;
+            
+            // --- Updated: --- Target the inner path of the new SVG for color change
+            arrowFillPath.style.fill = arrowColor;
+            
+            // --- New: --- Show or hide the instruction message
+            instructionMessageBox.style.display = showMessage ? 'block' : 'none';
 
             // Update arrow position
-            // Map beta angle (e.g., 45 to 135) to a vertical percentage (e.g., 5% to 95%)
-            // This range means the arrow moves across 90% of the screen for a 90-degree tilt change.
             const rawTopPercent = 5 + ((beta - 45) / (135 - 45)) * (95 - 5);
-            
-            // Clamp the value to ensure it stays within the visible bounds (5% to 95%)
             const clampedTopPercent = Math.max(5, Math.min(95, rawTopPercent));
             scanArrowContainer.style.top = `${clampedTopPercent}%`;
         }
 
         async function startVideo() {
-            // Define constraints for the video stream
             const constraints = {
                 video: {
                     facingMode: 'environment',
@@ -269,18 +307,12 @@
             };
 
             try {
-                // Request access to the camera
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                // If access is granted, attach the stream to the video element
                 videoElement.srcObject = stream;
                 
-                // Switch from the instruction screen to the capture screen
                 instructionScreen.style.display = 'none';
                 captureScreen.style.display = 'flex';
 
-                // --- Handle Device Orientation sensor access
-                // For iOS 13+, we must explicitly request permission.
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
                     if (permissionState === 'granted') {
@@ -290,16 +322,13 @@
                         scanArrowContainer.style.display = 'none';
                     }
                 } else if (window.DeviceOrientationEvent) {
-                    // For other devices (like Android) that support the event without a separate permission.
                     window.addEventListener('deviceorientation', handleOrientation);
                 } else {
-                    // The device doesn't support orientation events.
                     console.warn("DeviceOrientationEvent not supported. Hiding arrow.");
                     scanArrowContainer.style.display = 'none';
                 }
 
             } catch (err) {
-                // Handle errors (e.g., user denies permission)
                 console.error("Error accessing camera: ", err);
                 alert("Could not access the camera. Please ensure you grant permission and are not using it in another app.");
             }
