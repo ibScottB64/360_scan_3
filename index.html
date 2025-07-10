@@ -102,7 +102,7 @@
             width: 28px;
             height: 28px;
             margin-right: 0.75rem;
-            fill: #3498db; /* A nice blue color for the icon */
+            fill: #3498db;
         }
         
         .video-container {
@@ -110,13 +110,13 @@
             width: 100%;
             position: relative;
             overflow: hidden;
-            background-color: #111; /* Fallback color */
+            background-color: #111;
         }
 
         #videoElement {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures video fills the space without distortion */
+            object-fit: cover;
         }
 
         /* --- Overlays for Video --- */
@@ -155,7 +155,7 @@
         }
         
         #instructionMessageBox {
-            display: none; /* Hidden by default */
+            display: none;
             position: absolute;
             bottom: 10%;
             left: 50%;
@@ -188,6 +188,53 @@
             z-index: 25;
         }
 
+        /* --- Thumbnail Area Styles --- */
+        .thumbnail-area {
+            flex-grow: 1;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            overflow-x: auto;
+        }
+        .thumbnail-area img {
+            height: 80%;
+            margin: 0 5px;
+            border-radius: 5px;
+            border: 2px solid #555;
+        }
+
+        /* --- New UI elements from Mockup --- */
+        #slowDownMessage {
+            display: none;
+            position: absolute;
+            bottom: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem;
+            background-color: rgba(90, 90, 90, 0.85);
+            color: white;
+            border-radius: 15px;
+            z-index: 30;
+            text-align: center;
+            width: 80%;
+            max-width: 320px;
+        }
+
+        #progressCircle {
+            display: none;
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            z-index: 30;
+        }
+
+        #progressCircle circle {
+            transition: stroke-dashoffset 0.2s linear;
+        }
     </style>
 </head>
 <body>
@@ -197,26 +244,11 @@
         <div class="content">
             <h1>Testing space video scan instructions</h1>
             <ul>
-                <li>
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2A1,1 0 0,1 13,3V4A1,1 0 0,1 12,5A1,1 0 0,1 11,4V3A1,1 0 0,1 12,2M19.07,4.93A1,1 0 0,1 20.5,6.34L19.79,7.05A1,1 0 0,1 18.38,5.64L19.07,4.93M4.93,19.07A1,1 0 0,1 6.34,20.5L7.05,19.79A1,1 0 0,1 5.64,18.38L4.93,19.07M18.38,18.38A1,1 0 0,1 19.79,19.79L20.5,19.07A1,1 0 0,1 19.07,17.66L18.38,18.38M22,12A1,1 0 0,1 21,13H20A1,1 0 0,1 19,12A1,1 0 0,1 20,11H21A1,1 0 0,1 22,12M4,12A1,1 0 0,1 3,13H2A1,1 0 0,1 1,12A1,1 0 0,1 2,11H3A1,1 0 0,1 4,12M12,19A1,1 0 0,1 11,20V21A1,1 0 0,1 12,22A1,1 0 0,1 13,21V20A1,1 0 0,1 12,19Z"/></svg>
-                    <span>Ensure testing space is well-lit</span>
-                </li>
-                <li>
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M2 12h20v2H2zm2-4h2v2H4zm14 0h2v2h-2zM2 6h20v2H2zm18 8H4v6h2v-2h12v2h2z"/></svg>
-                    <span>Stand in the middle of your testing space facing your desk.</span>
-                </li>
-                <li>
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg>
-                    <span>Hold your mobile phone in portrait mode and as level as possible.</span>
-                </li>
-                <li>
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C14.5,20.7 9.4,20.7 6.3,17.6C5.1,16.5 4.3,15.1 4,13.5H6.1C6.4,14.6 7.1,15.6 7.9,16.4C10.3,18.8 14.3,18.8 16.7,16.4C19.1,14 19.1,10 16.7,7.6C15.6,6.5 14,6 12.3,6L13.1,6.8L11.7,8.2L8.2,4.7L11.7,1.2L13.1,2.6L12,3.8C12,3.8 12,3.9 12,4M12,19.9C11.7,19.9 11.4,20 11.1,20C6.6,20 3,16.4 3,11.9C3,11.6 3,11.3 3,11H1C1,11.3 1,11.6 1,11.9C1,17.5 5.5,22 11.1,22C11.4,22 11.7,22 12,21.9V19.9Z"/></svg>
-                    <span>When prompted start rotating to your right 360&deg;</span>
-                </li>
-                <li>
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12.2,19.9C14.6,19.9 16.6,17.9 16.6,15.5C16.6,13.1 14.6,11.1 12.2,11.1C11.2,11.1 9.9,11.9 9.9,11.9C9.9,11.9 9.3,11.4 8.2,11.1C6.2,10.5 4.1,11.9 3.5,13.9C2.8,15.9 4.2,18 6.2,18.7C6.6,18.8 7.1,18.9 7.6,18.9C8.6,18.9 9.6,18.5 10.3,17.7C10.3,17.7 10.6,18.9 12.2,19.9M18,12.5C19.4,12.5 20.5,11.4 20.5,10C20.5,8.6 19.4,7.5 18,7.5C16.6,7.5 15.5,8.6 15.5,10C15.5,11.4 16.6,12.5 18,12.5M19.5,6.5C20.6,6.5 21.5,5.6 21.5,4.5C21.5,3.4 20.6,2.5 19.5,2.5C18.4,2.5 17.5,3.4 17.5,4.5C17.5,5.6 18.4,6.5 19.5,6.5Z"/></svg>
-                    <span>Move slowly to ensure proper capturing of your environment.</span>
-                </li>
+                <li><svg class="icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2A1,1 0 0,1 13,3V4A1,1 0 0,1 12,5A1,1 0 0,1 11,4V3A1,1 0 0,1 12,2M19.07,4.93A1,1 0 0,1 20.5,6.34L19.79,7.05A1,1 0 0,1 18.38,5.64L19.07,4.93M4.93,19.07A1,1 0 0,1 6.34,20.5L7.05,19.79A1,1 0 0,1 5.64,18.38L4.93,19.07M18.38,18.38A1,1 0 0,1 19.79,19.79L20.5,19.07A1,1 0 0,1 19.07,17.66L18.38,18.38M22,12A1,1 0 0,1 21,13H20A1,1 0 0,1 19,12A1,1 0 0,1 20,11H21A1,1 0 0,1 22,12M4,12A1,1 0 0,1 3,13H2A1,1 0 0,1 1,12A1,1 0 0,1 2,11H3A1,1 0 0,1 4,12M12,19A1,1 0 0,1 11,20V21A1,1 0 0,1 12,22A1,1 0 0,1 13,21V20A1,1 0 0,1 12,19Z"/></svg><span>Ensure testing space is well-lit</span></li>
+                <li><svg class="icon" viewBox="0 0 24 24"><path d="M2 12h20v2H2zm2-4h2v2H4zm14 0h2v2h-2zM2 6h20v2H2zm18 8H4v6h2v-2h12v2h2z"/></svg><span>Stand in the middle of your testing space facing your desk.</span></li>
+                <li><svg class="icon" viewBox="0 0 24 24"><path d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg><span>Hold your mobile phone in portrait mode and as level as possible.</span></li>
+                <li><svg class="icon" viewBox="0 0 24 24"><path d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C14.5,20.7 9.4,20.7 6.3,17.6C5.1,16.5 4.3,15.1 4,13.5H6.1C6.4,14.6 7.1,15.6 7.9,16.4C10.3,18.8 14.3,18.8 16.7,16.4C19.1,14 19.1,10 16.7,7.6C15.6,6.5 14,6 12.3,6L13.1,6.8L11.7,8.2L8.2,4.7L11.7,1.2L13.1,2.6L12,3.8C12,3.8 12,3.9 12,4M12,19.9C11.7,19.9 11.4,20 11.1,20C6.6,20 3,16.4 3,11.9C3,11.6 3,11.3 3,11H1C1,11.3 1,11.6 1,11.9C1,17.5 5.5,22 11.1,22C11.4,22 11.7,22 12,21.9V19.9Z"/></svg><span>When prompted start rotating to your right 360&deg;</span></li>
+                <li><svg class="icon" viewBox="0 0 24 24"><path d="M12.2,19.9C14.6,19.9 16.6,17.9 16.6,15.5C16.6,13.1 14.6,11.1 12.2,11.1C11.2,11.1 9.9,11.9 9.9,11.9C9.9,11.9 9.3,11.4 8.2,11.1C6.2,10.5 4.1,11.9 3.5,13.9C2.8,15.9 4.2,18 6.2,18.7C6.6,18.8 7.1,18.9 7.6,18.9C8.6,18.9 9.6,18.5 10.3,17.7C10.3,17.7 10.6,18.9 12.2,19.9M18,12.5C19.4,12.5 20.5,11.4 20.5,10C20.5,8.6 19.4,7.5 18,7.5C16.6,7.5 15.5,8.6 15.5,10C15.5,11.4 16.6,12.5 18,12.5M19.5,6.5C20.6,6.5 21.5,5.6 21.5,4.5C21.5,3.4 20.6,2.5 19.5,2.5C18.4,2.5 17.5,3.4 17.5,4.5C17.5,5.6 18.4,6.5 19.5,6.5Z"/></svg><span>Move slowly to ensure proper capturing of your environment.</span></li>
             </ul>
         </div>
         <button id="startCaptureButton">Capture video</button>
@@ -243,12 +275,21 @@
                 Get ready to slowly pan the camera in the direction of the arrow, stay on the red line, and keep steady for best results.
             </div>
             <div id="countdownDisplay"></div>
+            <div id="slowDownMessage">Slow down. Rotating too quickly can cause motion blur and reduce video quality.</div>
+            <div id="progressCircle">
+                <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" stroke="#fff" stroke-width="10" fill="none" opacity="0.3"></circle>
+                    <circle id="progressRing" cx="50" cy="50" r="45" stroke="#f39c12" stroke-width="10" fill="none" 
+                            stroke-linecap="round" transform="rotate(-90 50 50)"
+                            stroke-dasharray="282.7" stroke-dashoffset="282.7"></circle>
+                </svg>
+            </div>
         </div>
-        <div class="thumbnail-area" style="flex-grow: 1; background-color: #000;"></div>
+        <div id="thumbnailContainer" class="thumbnail-area"></div>
     </div>
 
     <script>
-        // Get DOM elements
+        // DOM Elements
         const instructionScreen = document.getElementById('instructionScreen');
         const captureScreen = document.getElementById('captureScreen');
         const startCaptureButton = document.getElementById('startCaptureButton');
@@ -257,18 +298,60 @@
         const instructionMessageBox = document.getElementById('instructionMessageBox');
         const arrowShape = document.getElementById('arrow-shape');
         const countdownDisplay = document.getElementById('countdownDisplay');
+        const thumbnailContainer = document.getElementById('thumbnailContainer');
+        const progressCircle = document.getElementById('progressCircle');
+        const progressRing = document.getElementById('progressRing');
+        const slowDownMessage = document.getElementById('slowDownMessage');
 
-        // State variables for countdown logic
+        // State Variables
         let greenZoneTimer = null;
         let isCountdownActive = false;
+        let imageCapture = null;
+        let isCapturePhaseActive = false;
+        let startHeading = null;
+        let capturedImageCount = 0;
+        let lastAlpha = 0;
+        let slowDownTimer = null;
 
-        const COLOR_GOOD = '#2ecc71';
-        const COLOR_OK = '#f1c40f';
-        const COLOR_BAD = 'red';
+        // Constants
+        const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
+        const TOTAL_IMAGES = 6;
+        const CAPTURE_ANGLE_INTERVAL = 360 / TOTAL_IMAGES; // 60 degrees
+
+        startCaptureButton.addEventListener('click', () => startVideo());
+
+        async function takePicture() {
+            if (!imageCapture || capturedImageCount >= TOTAL_IMAGES) return;
+            try {
+                const blob = await imageCapture.takePhoto();
+                const imageUrl = URL.createObjectURL(blob);
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                thumbnailContainer.appendChild(img);
+                capturedImageCount++;
+
+                if (capturedImageCount >= TOTAL_IMAGES) {
+                    finishCapture();
+                }
+            } catch (error) {
+                console.error("Error taking photo: ", error);
+            }
+        }
+
+        function beginCaptureProcess() {
+            isCapturePhaseActive = true;
+            scanArrowContainer.style.display = 'none'; // Hide tilt arrow
+            progressCircle.style.display = 'block';   // Show progress circle
+            takePicture(); // Take the first picture immediately
+        }
         
-        startCaptureButton.addEventListener('click', () => {
-            startVideo();
-        });
+        function finishCapture() {
+            isCapturePhaseActive = false;
+            progressCircle.style.display = 'none';
+            slowDownMessage.style.display = 'none';
+            // Optionally, stop the video stream and show a "complete" message
+            console.log("Capture complete!");
+        }
 
         function startCountdownSequence() {
             isCountdownActive = true;
@@ -287,74 +370,95 @@
                     clearInterval(countdownInterval);
                     countdownDisplay.style.display = 'none';
                     isCountdownActive = false;
+                    beginCaptureProcess();
                 }
             }, 1000);
         }
 
         function handleOrientation(event) {
-            const beta = event.beta; 
-            if (beta === null || isCountdownActive) return;
+            if (isCountdownActive) return;
 
-            const TARGET_ANGLE = 90.0;
-            const SENSITIVITY = 1.5;
-            const deviation = Math.abs(beta - TARGET_ANGLE);
+            const { beta, alpha } = event;
+            if (beta === null || alpha === null) return;
 
-            let arrowColor;
+            if (!isCapturePhaseActive) {
+                // Tilt-to-start phase
+                const TARGET_ANGLE = 90.0, SENSITIVITY = 1.5;
+                const deviation = Math.abs(beta - TARGET_ANGLE);
+                arrowShape.style.fill = (deviation < 5) ? COLOR_GOOD : (deviation < 10) ? COLOR_OK : COLOR_BAD;
 
-            if (deviation < 5) {
-                arrowColor = COLOR_GOOD;
-                instructionMessageBox.style.display = 'block';
-                if (greenZoneTimer === null) {
-                    // --- Updated: --- Changed timeout to 4 seconds (4000ms)
-                    greenZoneTimer = setTimeout(startCountdownSequence, 4000);
+                if (deviation < 5) {
+                    instructionMessageBox.style.display = 'block';
+                    if (greenZoneTimer === null) greenZoneTimer = setTimeout(startCountdownSequence, 4000);
+                } else {
+                    instructionMessageBox.style.display = 'none';
+                    if (greenZoneTimer) { clearTimeout(greenZoneTimer); greenZoneTimer = null; }
                 }
+
+                const offset = beta - TARGET_ANGLE;
+                scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
             } else {
-                arrowColor = (deviation < 10) ? COLOR_OK : COLOR_BAD;
-                instructionMessageBox.style.display = 'none';
-                if (greenZoneTimer) {
-                    clearTimeout(greenZoneTimer);
-                    greenZoneTimer = null;
+                // Rotate-to-capture phase
+                if (startHeading === null) startHeading = alpha;
+
+                // Speed Check
+                let angleDiff = Math.abs(alpha - lastAlpha);
+                if (angleDiff > 180) angleDiff = 360 - angleDiff; // Handle wrap-around
+                if (angleDiff > 5) { // Threshold for "too fast"
+                    slowDownMessage.style.display = 'block';
+                    if(slowDownTimer) clearTimeout(slowDownTimer);
+                    slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
+                }
+                lastAlpha = alpha;
+
+                // Rotation Calculation
+                let totalRotation = alpha - startHeading;
+                if (totalRotation < 0) totalRotation += 360;
+
+                // Progress Circle Update
+                const circumference = 282.7;
+                progressRing.style.strokeDashoffset = circumference - (totalRotation / 360) * circumference;
+                
+                // Check for next capture
+                const segmentsToCapture = Math.floor(totalRotation / CAPTURE_ANGLE_INTERVAL);
+                if (segmentsToCapture > capturedImageCount - 1 && capturedImageCount < TOTAL_IMAGES) {
+                    takePicture();
                 }
             }
-            
-            arrowShape.style.fill = arrowColor;
-
-            const offset = beta - TARGET_ANGLE;
-            const rawTopPercent = 50 + (offset * SENSITIVITY);
-            const clampedTopPercent = Math.max(5, Math.min(95, rawTopPercent));
-            scanArrowContainer.style.top = `${clampedTopPercent}%`;
         }
 
         async function startVideo() {
-            const constraints = {
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-            };
-
+            // Reset state for a new session
+            isCountdownActive = false; isCapturePhaseActive = false;
+            capturedImageCount = 0; startHeading = null;
+            if(greenZoneTimer) clearTimeout(greenZoneTimer);
+            greenZoneTimer = null;
+            thumbnailContainer.innerHTML = '';
+            scanArrowContainer.style.display = 'block';
+            progressCircle.style.display = 'none';
+            
+            const constraints = { video: { facingMode: 'environment' } };
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 videoElement.srcObject = stream;
+                const track = stream.getVideoTracks()[0];
+                imageCapture = new ImageCapture(track);
                 
                 instructionScreen.style.display = 'none';
                 captureScreen.style.display = 'flex';
 
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
-                    if (permissionState === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation);
-                    } else {
-                        console.warn("Orientation permission denied. Hiding arrow.");
-                        scanArrowContainer.style.display = 'none';
-                    }
+                    if (permissionState === 'granted') window.addEventListener('deviceorientation', handleOrientation);
+                    else scanArrowContainer.style.display = 'none';
                 } else if (window.DeviceOrientationEvent) {
                     window.addEventListener('deviceorientation', handleOrientation);
                 } else {
-                    console.warn("DeviceOrientationEvent not supported. Hiding arrow.");
                     scanArrowContainer.style.display = 'none';
                 }
-
             } catch (err) {
                 console.error("Error accessing camera: ", err);
-                alert("Could not access the camera. Please ensure you grant permission and are not using it in another app.");
+                alert("Could not access camera. Please grant permission.");
             }
         }
     </script>
