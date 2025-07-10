@@ -106,11 +106,13 @@
         }
         
         .video-container {
-            height: 72vh; 
+            /* --- Updated: --- Using flex ratio instead of fixed vh */
+            flex: 7;
             width: 100%;
             position: relative;
             overflow: hidden;
             background-color: #111;
+            min-height: 0; /* Important for flex children */
         }
 
         #videoElement {
@@ -190,14 +192,14 @@
 
         /* --- Thumbnail Area Styles --- */
         .thumbnail-area {
-            flex-grow: 1;
+            /* --- Updated: --- Using flex ratio instead of flex-grow */
+            flex: 3;
             background-color: #000;
             display: flex;
             align-items: center;
             padding: 1vh 10px;
             box-sizing: border-box;
             overflow-x: auto;
-            /* --- Updated: --- This prevents the container from growing taller than its allocated flex space. */
             min-height: 0;
         }
         .thumbnail-area img {
@@ -311,7 +313,7 @@
         let greenZoneTimer = null, isCountdownActive = false, imageCapture = null;
         let isCapturePhaseActive = false, capturedImageCount = 0;
         let lastAlpha = null, slowDownTimer = null;
-        let accumulatedRotation = 0; // --- Updated: --- Tracks total clockwise rotation
+        let accumulatedRotation = 0;
 
         // Constants
         const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
@@ -394,12 +396,11 @@
                 scanArrowContainer.style.top = '50%';
                 arrowShape.style.fill = '#3498db';
 
-                // --- Updated: --- Corrected and simplified rotation logic
                 let delta = alpha - lastAlpha;
-                if (delta < -180) delta += 360; // Handle wrap-around for clockwise rotation
-                if (delta > 180) delta -= 360; // Handle wrap-around for counter-clockwise
+                if (delta < -180) delta += 360; 
+                if (delta > 180) delta -= 360;
                 
-                if (delta > 0 && delta < 45) { // Only accumulate clockwise rotation, ignore huge jumps
+                if (delta > 0 && delta < 45) {
                     accumulatedRotation += delta;
                 }
                 lastAlpha = alpha;
@@ -409,7 +410,7 @@
                 const currentLeftPercent = startLeftPercent + (accumulatedRotation / 360) * leftRange;
                 scanArrowContainer.style.left = `calc(${Math.min(endLeftPercent, currentLeftPercent)}% - 29px)`;
 
-                if (delta > 5) { // Check for fast rotation speed
+                if (delta > 5) {
                     slowDownMessage.style.display = 'block';
                     if(slowDownTimer) clearTimeout(slowDownTimer);
                     slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
@@ -419,8 +420,8 @@
                 progressRing.style.strokeDashoffset = circumference - (accumulatedRotation / 360) * circumference;
                 
                 const segmentsCaptured = capturedImageCount;
-                const segmentsPassed = Math.floor(accumulatedRotation / CAPTURE_ANGLE_INTERVAL) + 1;
-                if (segmentsPassed > segmentsCaptured && capturedImageCount < TOTAL_IMAGES) {
+                const segmentsToCapture = Math.floor(accumulatedRotation / CAPTURE_ANGLE_INTERVAL) + 1;
+                if (segmentsToCapture > segmentsCaptured && capturedImageCount < TOTAL_IMAGES) {
                     takePicture();
                 }
             }
