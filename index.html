@@ -106,7 +106,6 @@
         }
         
         .video-container {
-            /* --- Updated: --- Adjusted height for a balanced layout */
             height: 72vh; 
             width: 100%;
             position: relative;
@@ -136,7 +135,6 @@
             top: 50%;
             left: 10px;
             transform: translateY(-50%);
-            /* --- Updated: --- Increased size by 50% for new SVG */
             width: 72px;
             height: 54px;
             transition: top 0.2s linear;
@@ -159,7 +157,6 @@
         #instructionMessageBox {
             display: none; /* Hidden by default */
             position: absolute;
-            /* --- Updated: --- Raised the box from the bottom */
             bottom: 10%;
             left: 50%;
             transform: translateX(-50%);
@@ -228,7 +225,6 @@
             <!-- Visual Overlays -->
             <div class="scan-overlay"></div>
             <div id="scanArrowContainer" class="scan-arrow">
-                 <!-- --- Updated: --- Reshaped arrow SVG with shorter shaft -->
                  <svg viewBox="0 0 23 30">
                     <path id="arrow-shape" d="M0 12 L8 12 L8 5 L23 15 L8 25 L8 18 L0 18 Z" 
                           stroke="white" stroke-width="2.5" stroke-linejoin="round" />
@@ -253,6 +249,9 @@
         const instructionMessageBox = document.getElementById('instructionMessageBox');
         const arrowShape = document.getElementById('arrow-shape');
 
+        // --- New: --- Variable to store the calibrated center angle
+        let calibratedTargetAngle = null;
+
         // --- Constants for arrow colors
         const COLOR_GOOD = '#2ecc71'; // Green
         const COLOR_OK = '#f1c40f';   // Yellow
@@ -268,8 +267,13 @@
             const beta = event.beta; 
             if (beta === null) return;
 
-            const TARGET_ANGLE = 90.0;
-            const deviation = Math.abs(beta - TARGET_ANGLE);
+            // --- Updated: --- Calibrate on the first reading
+            if (calibratedTargetAngle === null) {
+                calibratedTargetAngle = beta;
+            }
+
+            // --- Updated: --- Calculate deviation from the *calibrated* center
+            const deviation = Math.abs(beta - calibratedTargetAngle);
 
             let arrowColor;
             let showMessage = false;
@@ -287,13 +291,20 @@
             
             instructionMessageBox.style.display = showMessage ? 'block' : 'none';
 
-            // Update arrow position
-            const rawTopPercent = 5 + ((beta - 45) / (135 - 45)) * (95 - 5);
+            // --- Updated: --- New position logic based on calibrated center
+            // Calculate the offset from our calibrated center point
+            const offset = beta - calibratedTargetAngle;
+            // Start at 50% and apply the offset. A positive offset (tilted back) moves the arrow down.
+            const rawTopPercent = 50 + offset;
+            // Clamp the value to keep the arrow from going off-screen
             const clampedTopPercent = Math.max(5, Math.min(95, rawTopPercent));
             scanArrowContainer.style.top = `${clampedTopPercent}%`;
         }
 
         async function startVideo() {
+            // --- New: --- Reset calibration on each start
+            calibratedTargetAngle = null;
+            
             const constraints = {
                 video: {
                     facingMode: 'environment',
