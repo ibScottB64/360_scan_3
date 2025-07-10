@@ -214,10 +214,10 @@
         const videoElement = document.getElementById('videoElement');
         const scanArrowContainer = document.getElementById('scanArrowContainer');
 
-        // --- New: --- Constants for arrow colors
+        // --- Constants for arrow colors
         const COLOR_GOOD = '#2ecc71'; // Green
-        const COLOR_OK = '#f1c40f'; // Yellow
-        const COLOR_BAD = '#e74c3c'; // Red
+        const COLOR_OK = '#f1c40f';   // Yellow
+        const COLOR_BAD = '#e74c3c';    // Red
         const COLOR_NEUTRAL = '#3498db'; // Blue (Default)
 
         // Event listener for the capture button
@@ -226,7 +226,7 @@
             startVideo();
         });
 
-        // --- New: --- Function to handle device orientation changes
+        // --- Function to handle device orientation changes
         function handleOrientation(event) {
             // Beta is the front-to-back tilt. 90 is vertical.
             const beta = event.beta; 
@@ -237,14 +237,14 @@
             const TARGET_ANGLE = 90.0;
             const deviation = Math.abs(beta - TARGET_ANGLE);
 
-            // Determine arrow color based on deviation
-            let arrowColor = COLOR_NEUTRAL;
-            if (deviation <= 5) {
-                arrowColor = COLOR_GOOD;
-            } else if (deviation > 30) {
-                arrowColor = COLOR_BAD;
-            } else if (deviation > 20) {
-                arrowColor = COLOR_OK;
+            // --- Updated: --- Determine arrow color based on tighter deviation
+            let arrowColor = COLOR_NEUTRAL; // Default to neutral (blue)
+            if (deviation > 20) {
+                arrowColor = COLOR_BAD; // Red
+            } else if (deviation > 10) {
+                arrowColor = COLOR_OK; // Yellow
+            } else if (deviation <= 5) {
+                arrowColor = COLOR_GOOD; // Green
             }
             scanArrowContainer.style.fill = arrowColor;
 
@@ -279,7 +279,7 @@
                 instructionScreen.style.display = 'none';
                 captureScreen.style.display = 'flex';
 
-                // --- New: --- Handle Device Orientation sensor access
+                // --- Handle Device Orientation sensor access
                 // For iOS 13+, we must explicitly request permission.
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
