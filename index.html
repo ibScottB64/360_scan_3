@@ -137,7 +137,7 @@
             transform: translateY(-50%);
             width: 58px;
             height: 43px;
-            transition: top 0.2s linear, left 0.2s linear; /* --- Updated: --- Added left transition */
+            transition: top 0.2s linear, left 0.2s linear;
         }
 
         #arrow-shape {
@@ -194,15 +194,13 @@
             background-color: #000;
             display: flex;
             align-items: center;
-            /* --- Updated: --- Added padding and box-sizing */
             padding: 1vh 10px;
             box-sizing: border-box;
             overflow-x: auto;
         }
         .thumbnail-area img {
-            /* --- Updated: --- Set height to 100% of padded container */
             height: 100%;
-            width: auto; /* This ensures aspect ratio is maintained */
+            width: auto;
             margin: 0 5px;
             border-radius: 5px;
             border: 2px solid #555;
@@ -308,19 +306,14 @@
         const slowDownMessage = document.getElementById('slowDownMessage');
 
         // State Variables
-        let greenZoneTimer = null;
-        let isCountdownActive = false;
-        let imageCapture = null;
-        let isCapturePhaseActive = false;
-        let startHeading = null;
-        let capturedImageCount = 0;
-        let lastAlpha = 0;
-        let slowDownTimer = null;
+        let greenZoneTimer = null, isCountdownActive = false, imageCapture = null;
+        let isCapturePhaseActive = false, startHeading = null, capturedImageCount = 0;
+        let lastAlpha = 0, slowDownTimer = null;
 
         // Constants
         const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
         const TOTAL_IMAGES = 6;
-        const CAPTURE_ANGLE_INTERVAL = 360 / TOTAL_IMAGES; // 60 degrees
+        const CAPTURE_ANGLE_INTERVAL = 360 / TOTAL_IMAGES;
 
         startCaptureButton.addEventListener('click', () => startVideo());
 
@@ -334,20 +327,15 @@
                 thumbnailContainer.appendChild(img);
                 capturedImageCount++;
 
-                if (capturedImageCount >= TOTAL_IMAGES) {
-                    finishCapture();
-                }
-            } catch (error) {
-                console.error("Error taking photo: ", error);
-            }
+                if (capturedImageCount >= TOTAL_IMAGES) finishCapture();
+            } catch (error) { console.error("Error taking photo: ", error); }
         }
 
         function beginCaptureProcess() {
             isCapturePhaseActive = true;
-            // --- Updated: --- Show the arrow instead of hiding it
             scanArrowContainer.style.display = 'block';
             progressCircle.style.display = 'block';
-            takePicture(); // Take the first picture immediately
+            takePicture();
         }
         
         function finishCapture() {
@@ -365,7 +353,6 @@
 
             let count = 3;
             countdownDisplay.textContent = count;
-
             const countdownInterval = setInterval(() => {
                 count--;
                 if (count > 0) {
@@ -381,12 +368,10 @@
 
         function handleOrientation(event) {
             if (isCountdownActive) return;
-
             const { beta, alpha } = event;
             if (beta === null || alpha === null) return;
 
             if (!isCapturePhaseActive) {
-                // Tilt-to-start phase
                 const TARGET_ANGLE = 90.0, SENSITIVITY = 1.5;
                 const deviation = Math.abs(beta - TARGET_ANGLE);
                 arrowShape.style.fill = (deviation < 5) ? COLOR_GOOD : (deviation < 10) ? COLOR_OK : COLOR_BAD;
@@ -398,29 +383,26 @@
                     instructionMessageBox.style.display = 'none';
                     if (greenZoneTimer) { clearTimeout(greenZoneTimer); greenZoneTimer = null; }
                 }
-
                 const offset = beta - TARGET_ANGLE;
                 scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
             } else {
-                // Rotate-to-capture phase
                 if (startHeading === null) startHeading = alpha;
-
-                // --- Updated: --- Horizontal Arrow Movement Logic ---
-                // Keep arrow vertically centered
-                scanArrowContainer.style.top = '50%'; 
-                // Set fill color to a neutral blue during rotation
+                
+                scanArrowContainer.style.top = '50%';
                 arrowShape.style.fill = '#3498db';
 
+                // --- Updated: --- Corrected rotation logic
                 let totalRotation = alpha - startHeading;
-                if (totalRotation < 0) totalRotation += 360;
+                // Handle the wrap-around from 359 to 0 degrees
+                if (totalRotation < -180) totalRotation += 360; 
+                // A small turn left should not count as progress
+                if (totalRotation < 0) totalRotation = 0;
 
-                const startLeftPercent = 10; // Start at 10% from left
-                const endLeftPercent = 90; // End at 90% from left
+                const startLeftPercent = 10, endLeftPercent = 90;
                 const leftRange = endLeftPercent - startLeftPercent;
                 const currentLeftPercent = startLeftPercent + (totalRotation / 360) * leftRange;
-                scanArrowContainer.style.left = `calc(${currentLeftPercent}% - 29px)`; // Adjust for half of arrow's width
+                scanArrowContainer.style.left = `calc(${currentLeftPercent}% - 29px)`;
 
-                // Speed Check
                 let angleDiff = Math.abs(alpha - lastAlpha);
                 if (angleDiff > 180) angleDiff = 360 - angleDiff;
                 if (angleDiff > 5) {
@@ -430,31 +412,31 @@
                 }
                 lastAlpha = alpha;
 
-                // Progress Circle Update
                 const circumference = 282.7;
                 progressRing.style.strokeDashoffset = circumference - (totalRotation / 360) * circumference;
                 
-                // Check for next capture
-                const segmentsToCapture = Math.floor(totalRotation / CAPTURE_ANGLE_INTERVAL);
-                if (segmentsToCapture >= capturedImageCount && capturedImageCount < TOTAL_IMAGES) {
+                // --- Updated: --- Refined capture condition
+                const segmentsCaptured = capturedImageCount - 1;
+                const segmentsPassed = Math.floor(totalRotation / CAPTURE_ANGLE_INTERVAL);
+                if (segmentsPassed > segmentsCaptured && capturedImageCount < TOTAL_IMAGES) {
                     takePicture();
                 }
             }
         }
 
         async function startVideo() {
-            // Reset state
             isCountdownActive = false; isCapturePhaseActive = false;
             capturedImageCount = 0; startHeading = null;
             if(greenZoneTimer) clearTimeout(greenZoneTimer);
             greenZoneTimer = null;
             thumbnailContainer.innerHTML = '';
             scanArrowContainer.style.display = 'block';
-            scanArrowContainer.style.left = '10px'; // Reset arrow position
+            scanArrowContainer.style.left = '10px';
             progressCircle.style.display = 'none';
             
             const constraints = { video: { facingMode: 'environment' } };
             try {
+                // --- Updated: --- Get stream first before changing the UI
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 videoElement.srcObject = stream;
                 const track = stream.getVideoTracks()[0];
