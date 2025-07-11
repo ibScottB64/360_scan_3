@@ -226,9 +226,9 @@
  const PITCH_SCAN_TOLERANCE = 5;
  const ROLL_SCAN_TOLERANCE = 20;
 
-  // Velocity thresholds (degrees per second)
-  const VELOCITY_WARNING_THRESHOLD = 10;
-  const VELOCITY_DANGER_THRESHOLD = 20;
+  // MODIFICATION: Velocity thresholds adjusted
+  const VELOCITY_WARNING_THRESHOLD = 20; // deg/s
+  const VELOCITY_DANGER_THRESHOLD = 40; // deg/s
 
  const SENSITIVITY = 1.5;
   const ARROW_HALF_HEIGHT_PX = 21.5;
@@ -259,9 +259,8 @@
   let audioContext = null;
   let beepTimeoutId = null;
   let currentBeepInterval = 1000; //ms
-  // MODIFICATION: Adjusted beep intervals
   const MAX_BEEP_INTERVAL = 1000; // 1 beep/sec
-  const MIN_BEEP_INTERVAL = 10;  // 5 beeps/sec
+  const MIN_BEEP_INTERVAL = 10;   // MODIFICATION: Adjusted beep interval
 
  // --- Permission Handling & Audio Setup ---
  async function requestAllPermissions() {
@@ -428,45 +427,49 @@
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
 
-    // Map smoothed velocity to beep interval
     const velocityRatio = Math.min(smoothedAngularVelocity, VELOCITY_DANGER_THRESHOLD) / VELOCITY_DANGER_THRESHOLD;
     currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
 
-
-    // New Warning Logic with Non-flicker Timer
+    // --- MODIFICATION: New Warning Logic with non-flicker arrow color ---
     clearTimeout(messageHideTimeout);
     messageHideTimeout = null;
 
-    let warningTriggered = false;
+    let warningMessageToShow = null;
+    let isDangerCondition = false;
+
     if (isVelocityCheckActive) {
         if (smoothedAngularVelocity > VELOCITY_DANGER_THRESHOLD) {
-          scanState = 'error';
-          arrowShape.style.fill = COLOR_BAD;
-          showInstructionMessage("You rotated the camera too quickly, but you're doing great!", true);
-          warningTriggered = true;
+            isDangerCondition = true;
         } else if (smoothedAngularVelocity > VELOCITY_WARNING_THRESHOLD) {
-          arrowShape.style.fill = COLOR_OK;
-          showInstructionMessage("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
-          warningTriggered = true;
+            warningMessageToShow = "Please slow down. Rotating too quickly can cause motion blur and reduce video quality.";
         }
     }
     
-    if (!warningTriggered) {
+    if (!isDangerCondition && !warningMessageToShow) {
         if (Math.abs(pitchOffset) > PITCH_SCAN_TOLERANCE || Math.abs(smoothedRoll) > ROLL_SCAN_TOLERANCE) {
-          arrowShape.style.fill = COLOR_OK;
-          showInstructionMessage("Realign the arrow by rotating your phone to the left or right or forward or back.");
-          warningTriggered = true;
+            warningMessageToShow = "Realign the arrow by rotating your phone to the left or right or forward or back.";
         }
     }
-    
-    if (!warningTriggered) {
+
+    if (isDangerCondition) {
+        scanState = 'error';
+        arrowShape.style.fill = COLOR_BAD;
+        showInstructionMessage("You rotated the camera too quickly, but you're doing great!", true);
+        return; // Stop processing
+    }
+
+    if (warningMessageToShow) {
+        showInstructionMessage(warningMessageToShow);
+        arrowShape.style.fill = COLOR_OK;
+    } else {
         arrowShape.style.fill = COLOR_GOOD;
         if (instructionMessageBox.style.display === 'block') {
-            messageHideTimeout = setTimeout(hideInstructionMessage, 500);
+            messageHideTimeout = setTimeout(hideInstructionMessage, 300);
+            // As long as the message is visible (during the timeout), keep the arrow yellow
+            arrowShape.style.fill = COLOR_OK;
         }
     }
-    
-    if (scanState === 'error') return;
+    // --- End of new warning logic ---
 
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
