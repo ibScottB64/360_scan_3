@@ -259,7 +259,6 @@
   let audioContext = null;
   let beepTimeoutId = null;
   let currentBeepInterval = 2000;
-  // MODIFICATION: Adjusted beep intervals
   const MAX_BEEP_INTERVAL = 2000;
   const MIN_BEEP_INTERVAL = 200;
 
@@ -401,7 +400,7 @@
     countdownStartTimer = setTimeout(startCountdownSequence, COUNTDOWN_HOLD_TIME);
    }
    } else {
-   arrowShape.style.fill = (deviation < PITCH_TOLERANCE_OK) ? COLOR_OK : COLOR_BAD;
+   arrowShape.style.fill = (deviation < PITCH_TOLERANCE_OK) ? COLOR_BAD : COLOR_BAD;
    hideInstructionMessage();
    if (countdownStartTimer) {
     clearTimeout(countdownStartTimer);
@@ -431,8 +430,8 @@
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
 
-    // MODIFICATION: New beep logic reinstated
-    const velocityRatio = Math.min(smoothedAngularVelocity, VELOCITY_DANGER_THRESHOLD) / VELOCITY_DANGER_THRESHOLD;
+    // MODIFICATION: Corrected beep logic ramp
+    const velocityRatio = Math.min(1, smoothedAngularVelocity / VELOCITY_WARNING_THRESHOLD);
     currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
 
     
@@ -508,8 +507,8 @@
        hideInstructionMessage();
        clearTimeout(beepTimeoutId);
        // MODIFICATION: Adjusted final arrow position
-       scanArrowContainer.style.left = 'calc(95% - 73px)';
-       scanArrowContainer.style.top = 'calc(50% - 29.5px)';
+       scanArrowContainer.style.left = 'calc(95% - 68px)';
+       scanArrowContainer.style.top = 'calc(50% - 24.5px)';
        scanArrowContainer.style.transform = 'rotate(0deg)';
        arrowShape.style.fill = 'var(--target-color-light)';
        arrowShape.style.stroke = '#FFFFFF';
