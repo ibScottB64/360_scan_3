@@ -66,13 +66,13 @@
   border: 3px dashed rgba(255, 255, 255, 0.7); border-radius: 10px;
  }
  .scan-arrow {
-  position: absolute; left: 10px; /* JS will set top and transform */
-  width: 58px; height: 43px; transition: top 0.1s linear;
+  position: absolute; left: 10px; /* JS will set top, left and transform */
+  width: 58px; height: 43px; transition: top 0.1s linear, left 0.1s linear;
  }
  #arrow-shape { transition: fill 0.2s linear; }
  .scan-line {
   position: absolute;
-  top: calc(50% + 10px); /* MOVED DOWN 10px */
+  top: calc(50% + 13px); /* MOVED DOWN 13px */
   left: 5%;
   right: 5%;
   height: 2px;
@@ -83,7 +83,7 @@
   display: none; position: absolute;
   bottom: calc(50% + 20px); /* Positioned 20px above the vertical center */
   left: 50%; transform: translateX(-50%);
-  width: 70%; max-width: 300px; /* Made narrower */
+  width: 70%; max-width: 300px;
   background-color: rgba(190, 190, 190, 0.85);
   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   color: #000; font-weight: 500; padding: 1rem; border-radius: 15px;
@@ -148,7 +148,7 @@
        <path id="arrow-shape" d="M0 12 L8 12 L8 5 L23 15 L8 25 L8 18 L0 18 Z" stroke="black" stroke-width="1.25" stroke-linejoin="round" />
       </svg>
     </div>
-    <div class="scan-line"></div>
+    <div id="scanLine" class="scan-line"></div>
     <div id="instructionMessageBox">
        Get ready to slowly pan the camera... stay on the red line, and keep steady for best results.
     </div>
@@ -181,6 +181,7 @@
  const videoElement = document.getElementById('video-feed');
  const scanArrowContainer = document.getElementById('scanArrowContainer');
  const arrowShape = document.getElementById('arrow-shape');
+ const scanLine = document.getElementById('scanLine');
  const instructionMessageBox = document.getElementById('instructionMessageBox');
  const countdownDisplay = document.getElementById('countdownDisplay');
  const appStatus = document.getElementById('app-status');
@@ -201,13 +202,20 @@
  let isCapturing = false;
 
  const COUNTDOWN_HOLD_TIME = 4000;
- const TARGET_PITCH = 80; // Phone tilted 10 degrees forward from vertical (90)
+ const TARGET_PITCH = 80;
  const DEGREES_PER_FRAME = 60;
  const TOTAL_FRAMES = 360 / DEGREES_PER_FRAME;
+ const CAPTURE_WINDOW_DEGREES = 5.0;
+
+ // Alignment tolerances for PRE-SCAN (pitch only)
  const PITCH_TOLERANCE_GOOD = 5;
  const PITCH_TOLERANCE_OK = 10;
- const SENSITIVITY = 1.5; // Multiplier for arrow vertical movement
-  const ARROW_HALF_HEIGHT_PX = 21.5; // Half of the 43px arrow container height
+ // Alignment tolerances for DURING-SCAN (combined pitch and roll)
+ const SCAN_MISALIGNMENT_GOOD = 10;
+ const SCAN_MISALIGNMENT_OK = 20;
+
+ const SENSITIVITY = 1.5;
+  const ARROW_HALF_HEIGHT_PX = 21.5;
 
  // Colors for alignment arrow
  const COLOR_GOOD = '#FFFFFF', COLOR_OK = '#f1c40f', COLOR_BAD = '#e74c3c';
@@ -282,7 +290,7 @@
  // --- Countdown and Scan Start Logic ---
  function startCountdownSequence() {
   isCountdownActive = true;
-  countdownStartTimer = null; // Clear the timer
+  countdownStartTimer = null;
   instructionMessageBox.style.display = 'none';
   countdownDisplay.style.display = 'block';
 
@@ -301,22 +309,29 @@
   }, 1000);
  }
 
- function beginCaptureProcess() {
+ async function beginCaptureProcess() {
   scanState = 'scanning';
   appStatus.textContent = 'Rotate slowly to your right';
-  // Future steps will add frame capture and rotation tracking logic here.
+  startHeading = currentHeading;
+  targetHeadings = [];
+  nextHeadingIndex = 0;
+
+  await captureFrame();
+
+  for (let i = 0; i < TOTAL_FRAMES - 1; i++) {
+   const nextTarget = startHeading - ((i + 1) * DEGREES_PER_FRAME);
+   targetHeadings.push((nextTarget % 360 + 360) % 360);
+  }
  }
 
  // --- Core Logic: Handle Orientation ---
  async function handleOrientation(event) {
-  if (isCountdownActive) return; // Pause updates during countdown
+  if (isCountdownActive) return;
 
   let { alpha, beta, gamma } = event;
   if (alpha === null || beta === null || gamma === null) return;
 
   currentHeading = alpha;
-
-  // Smooth out the roll (gamma) value and set rotation
   smoothedRoll = (smoothedRoll * (1 - SMOOTHING_FACTOR)) + (gamma * SMOOTHING_FACTOR);
   const rotation = -smoothedRoll;
   scanArrowContainer.style.transform = `rotate(${rotation}deg)`;
@@ -324,11 +339,10 @@
   const pitchOffset = beta - TARGET_PITCH;
 
   if (scanState === 'pre-scan') {
-   // Calculate arrow's vertical position using calc() for precision
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
+   scanArrowContainer.style.left = '10px';
 
-   // Color change and countdown logic based on pitch deviation
    const deviation = Math.abs(pitchOffset);
    if (deviation < PITCH_TOLERANCE_GOOD) {
    arrowShape.style.fill = COLOR_GOOD;
@@ -347,13 +361,49 @@
    }
    }
   } else if (scanState === 'scanning') {
-   // Keep arrow centered during scan, using the same precise calc() method
-   scanArrowContainer.style.top = `calc(50% - ${ARROW_HALF_HEIGHT_PX}px)`;
-   arrowShape.style.fill = '#3498db'; // A neutral blue color
+   // --- Vertical and Rotational Alignment ---
+   const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
+   scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
+
+   const misalignment = Math.sqrt(Math.pow(pitchOffset, 2) + Math.pow(smoothedRoll, 2));
+    if (misalignment < SCAN_MISALIGNMENT_GOOD) {
+        arrowShape.style.fill = COLOR_GOOD;
+    } else if (misalignment < SCAN_MISALIGNMENT_OK) {
+        arrowShape.style.fill = COLOR_OK;
+    } else {
+        arrowShape.style.fill = COLOR_BAD;
+    }
+
+   // --- Horizontal Progress ---
+   let degreesRotated = (startHeading - currentHeading + 360) % 360;
+   const arrowLeftPercent = 10 + (degreesRotated / 360) * 80; // Maps 0-360deg to 10-90%
+   scanArrowContainer.style.left = `${arrowLeftPercent}%`;
+
+   // --- Frame Capture Logic ---
+   if (isCapturing || nextHeadingIndex >= targetHeadings.length) return;
+
+   const target = targetHeadings[nextHeadingIndex];
+   let diff = target - currentHeading;
+   if (diff > 180) diff -= 360;
+   if (diff < -180) diff += 360;
+
+   if (Math.abs(diff) < CAPTURE_WINDOW_DEGREES) {
+     isCapturing = true;
+     await captureFrame();
+     nextHeadingIndex++;
+
+     if (capturedFrames.length >= TOTAL_FRAMES) {
+       scanState = 'complete';
+       appStatus.textContent = 'Scan Complete';
+       scanArrowContainer.classList.add('hidden');
+       scanLine.classList.add('hidden');
+     }
+     isCapturing = false;
+   }
   }
  }
 
- // --- UNCHANGED FUNCTIONS (to be used in later steps) ---
+ // --- UNCHANGED FUNCTIONS ---
  function updateProgressDisplay(dataUrl, index) {
   const frameDiv = document.createElement('div');
   frameDiv.className = 'progress-frame';
@@ -397,6 +447,8 @@
  }
 
  async function captureFrame() {
+  if (isCapturing) return;
+  isCapturing = true; // Prevent re-entry
   if (!imageCaptureController) {
    const canvas = document.createElement('canvas');
    canvas.width = videoElement.videoWidth;
@@ -405,6 +457,7 @@
    const dataUrl = canvas.toDataURL('image/jpeg');
    capturedFrames.push(dataUrl);
    updateProgressDisplay(dataUrl, capturedFrames.length - 1);
+   isCapturing = false;
    return;
   }
   try {
@@ -417,6 +470,7 @@
    capturedFrames.push(dataUrl);
    updateProgressDisplay(dataUrl, capturedFrames.length - 1);
   } catch (error) { console.error('takePhoto() error:', error); }
+  isCapturing = false;
  }
 
  function resetScan() {
