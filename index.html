@@ -223,13 +223,12 @@
  // Alignment tolerances
  const PITCH_TOLERANCE_GOOD = 5;
  const PITCH_TOLERANCE_OK = 10;
-  // MODIFICATION: Replaced SCAN_TOLERANCE with specific pitch/roll values
- const PITCH_SCAN_TOLERANCE = 5;  // Halved from original 10
- const ROLL_SCAN_TOLERANCE = 20;  // Doubled from original 10
+ const PITCH_SCAN_TOLERANCE = 5;
+ const ROLL_SCAN_TOLERANCE = 20;
 
-  // MODIFICATION: Velocity thresholds reverted to original values
-  const VELOCITY_WARNING_THRESHOLD = 60; // deg/s
-  const VELOCITY_DANGER_THRESHOLD = 120; // deg/s
+  // MODIFICATION: Velocity thresholds adjusted
+  const VELOCITY_WARNING_THRESHOLD = 10; // deg/s
+  const VELOCITY_DANGER_THRESHOLD = 20; // deg/s
 
  const SENSITIVITY = 1.5;
   const ARROW_HALF_HEIGHT_PX = 21.5;
@@ -251,6 +250,7 @@
   // State for velocity calculation
   let lastHeadingTimestamp = 0;
   let previousHeading = 0;
+  let isFirstVelocityReading = true; // MODIFICATION: New state to handle initial velocity spike
 
  // --- Permission Handling ---
  async function requestAllPermissions() {
@@ -338,6 +338,7 @@
   
   previousHeading = currentHeading;
   lastHeadingTimestamp = Date.now();
+  isFirstVelocityReading = true; // MODIFICATION: Reset for new scan
 
   await captureFrame();
 
@@ -386,11 +387,17 @@
     const deltaTime = (currentTime - lastHeadingTimestamp) / 1000;
     let angularVelocity = 0;
 
+    // MODIFICATION: Ignore the first velocity reading to prevent false positives at start
     if (deltaTime > 0.01) {
-      let headingDiff = currentHeading - previousHeading;
-      if (headingDiff < -180) headingDiff += 360;
-      if (headingDiff > 180) headingDiff -= 360;
-      angularVelocity = Math.abs(headingDiff / deltaTime);
+        if (isFirstVelocityReading) {
+            isFirstVelocityReading = false;
+            // angularVelocity remains 0, skipping check
+        } else {
+            let headingDiff = currentHeading - previousHeading;
+            if (headingDiff < -180) headingDiff += 360;
+            if (headingDiff > 180) headingDiff -= 360;
+            angularVelocity = Math.abs(headingDiff / deltaTime);
+        }
     }
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
@@ -402,7 +409,6 @@
       return;
     }
 
-    // MODIFICATION: Check pitch and roll against their separate tolerances
     if (angularVelocity > VELOCITY_WARNING_THRESHOLD) {
       arrowShape.style.fill = COLOR_OK;
       showInstructionMessage("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
@@ -543,6 +549,7 @@
     currentHeading = 0;
     startHeading = 0;
     countdownStartTimer = null;
+    isFirstVelocityReading = true; // MODIFICATION: Reset for new scan
     
     progressDisplay.innerHTML = '';
     hideInstructionMessage();
