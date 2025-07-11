@@ -227,8 +227,8 @@
  const ROLL_SCAN_TOLERANCE = 20;
 
   // MODIFICATION: Velocity thresholds adjusted
-  const VELOCITY_WARNING_THRESHOLD = 20; // deg/s
-  const VELOCITY_DANGER_THRESHOLD = 40; // deg/s
+  const VELOCITY_WARNING_THRESHOLD = 15; // deg/s
+  const VELOCITY_DANGER_THRESHOLD = 30; // deg/s
 
  const SENSITIVITY = 1.5;
   const ARROW_HALF_HEIGHT_PX = 21.5;
@@ -258,9 +258,9 @@
   let messageHideTimeout = null;
   let audioContext = null;
   let beepTimeoutId = null;
-  let currentBeepInterval = 1000; //ms
-  const MAX_BEEP_INTERVAL = 1000; // 1 beep/sec
-  const MIN_BEEP_INTERVAL = 10;   // MODIFICATION: Adjusted beep interval
+  let currentBeepInterval = 2000; //ms
+  const MAX_BEEP_INTERVAL = 2000; // MODIFICATION: 1 beep/2 sec
+  const MIN_BEEP_INTERVAL = 10;
 
  // --- Permission Handling & Audio Setup ---
  async function requestAllPermissions() {
@@ -337,10 +337,13 @@
 
   let count = 3;
   countdownDisplay.textContent = count;
+  playBeep(); // MODIFICATION: Beep for '3'
+
   const countdownInterval = setInterval(() => {
    count--;
    if (count > 0) {
     countdownDisplay.textContent = count;
+     playBeep(); // MODIFICATION: Beep for '2' and '1'
    } else {
     clearInterval(countdownInterval);
     countdownDisplay.style.display = 'none';
@@ -430,7 +433,7 @@
     const velocityRatio = Math.min(smoothedAngularVelocity, VELOCITY_DANGER_THRESHOLD) / VELOCITY_DANGER_THRESHOLD;
     currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
 
-    // --- MODIFICATION: New Warning Logic with non-flicker arrow color ---
+    // --- New Warning Logic with non-flicker arrow color ---
     clearTimeout(messageHideTimeout);
     messageHideTimeout = null;
 
@@ -464,12 +467,13 @@
     } else {
         arrowShape.style.fill = COLOR_GOOD;
         if (instructionMessageBox.style.display === 'block') {
-            messageHideTimeout = setTimeout(hideInstructionMessage, 300);
+            messageHideTimeout = setTimeout(hideInstructionMessage, 300); // MODIFICATION: Timeout reduced to 300ms
             // As long as the message is visible (during the timeout), keep the arrow yellow
             arrowShape.style.fill = COLOR_OK;
         }
     }
-    // --- End of new warning logic ---
+    
+    if (scanState === 'error') return;
 
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
