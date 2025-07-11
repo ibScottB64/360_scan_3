@@ -240,6 +240,8 @@
  let targetHeadings = [], nextHeadingIndex = 0;
  let smoothedRoll = 0;
  const SMOOTHING_FACTOR = 0.1;
+  // MODIFICATION: Add smoothing for velocity
+ const VELOCITY_SMOOTHING_FACTOR = 0.1;
  let currentReviewIndex = -1;
  let touchStartX = 0, touchStartY = 0;
  let isZoomed = false;
@@ -250,7 +252,8 @@
   // State for velocity calculation
   let lastHeadingTimestamp = 0;
   let previousHeading = 0;
-  let isVelocityCheckActive = false; // MODIFICATION: Replaced simple flag with a more robust one
+  let isVelocityCheckActive = false;
+  let smoothedAngularVelocity = 0; // MODIFICATION: new state variable for smoothing
 
  // --- Permission Handling ---
  async function requestAllPermissions() {
@@ -338,7 +341,8 @@
   
   previousHeading = currentHeading;
   lastHeadingTimestamp = Date.now();
-  isVelocityCheckActive = false; // MODIFICATION: Reset for new scan
+  isVelocityCheckActive = false;
+  smoothedAngularVelocity = 0; // MODIFICATION: Reset for new scan
 
   await captureFrame();
 
@@ -385,51 +389,62 @@
   } else if (scanState === 'scanning') {
     let degreesRotated = (startHeading - currentHeading + 360) % 360;
 
-    // MODIFICATION: Activate velocity checks only after a clear >10 degree rotation
     if (!isVelocityCheckActive && degreesRotated > 10 && degreesRotated < 180) {
         isVelocityCheckActive = true;
     }
 
+    const currentTime = Date.now();
+    const deltaTime = (currentTime - lastHeadingTimestamp) / 1000;
     let angularVelocity = 0;
+
+    if (deltaTime > 0.01) {
+        let headingDiff = currentHeading - previousHeading;
+        if (headingDiff < -180) headingDiff += 360;
+        if (headingDiff > 180) headingDiff -= 360;
+        angularVelocity = Math.abs(headingDiff / deltaTime);
+    }
+
+    // MODIFICATION: Apply smoothing to the raw velocity
+    smoothedAngularVelocity = (smoothedAngularVelocity * (1 - VELOCITY_SMOOTHING_FACTOR)) + (angularVelocity * VELOCITY_SMOOTHING_FACTOR);
+    
+    previousHeading = currentHeading;
+    lastHeadingTimestamp = currentTime;
+
+    // MODIFICATION: Check the smoothed velocity (only if active)
     if (isVelocityCheckActive) {
-        const currentTime = Date.now();
-        const deltaTime = (currentTime - lastHeadingTimestamp) / 1000;
-        if (deltaTime > 0.01) {
-            let headingDiff = currentHeading - previousHeading;
-            if (headingDiff < -180) headingDiff += 360;
-            if (headingDiff > 180) headingDiff -= 360;
-            angularVelocity = Math.abs(headingDiff / deltaTime);
+        if (smoothedAngularVelocity > VELOCITY_DANGER_THRESHOLD) {
+          scanState = 'error';
+          arrowShape.style.fill = COLOR_BAD;
+          showInstructionMessage("You rotated the camera too quickly, but you're doing great!", true);
+          return;
+        }
+        if (smoothedAngularVelocity > VELOCITY_WARNING_THRESHOLD) {
+          arrowShape.style.fill = COLOR_OK;
+          showInstructionMessage("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
+        } else if (Math.abs(pitchOffset) > PITCH_SCAN_TOLERANCE || Math.abs(smoothedRoll) > ROLL_SCAN_TOLERANCE) {
+          arrowShape.style.fill = COLOR_OK;
+          showInstructionMessage("Realign the arrow by rotating your phone to the left or right or forward or back.");
+        } else {
+          arrowShape.style.fill = COLOR_GOOD;
+          hideInstructionMessage();
+        }
+    } else {
+        // Before velocity checks are active, only check for pitch/roll
+        if (Math.abs(pitchOffset) > PITCH_SCAN_TOLERANCE || Math.abs(smoothedRoll) > ROLL_SCAN_TOLERANCE) {
+          arrowShape.style.fill = COLOR_OK;
+          showInstructionMessage("Realign the arrow by rotating your phone to the left or right or forward or back.");
+        } else {
+          arrowShape.style.fill = COLOR_GOOD;
+          hideInstructionMessage();
         }
     }
-    // Always update these for the next frame's calculation
-    previousHeading = currentHeading;
-    lastHeadingTimestamp = Date.now();
 
-
-    if (angularVelocity > VELOCITY_DANGER_THRESHOLD) {
-      scanState = 'error';
-      arrowShape.style.fill = COLOR_BAD;
-      showInstructionMessage("You rotated the camera too quickly, but you're doing great!", true);
-      return;
-    }
-
-    if (angularVelocity > VELOCITY_WARNING_THRESHOLD) {
-      arrowShape.style.fill = COLOR_OK;
-      showInstructionMessage("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
-    } else if (Math.abs(pitchOffset) > PITCH_SCAN_TOLERANCE || Math.abs(smoothedRoll) > ROLL_SCAN_TOLERANCE) {
-      arrowShape.style.fill = COLOR_OK;
-      showInstructionMessage("Realign the arrow by rotating your phone to the left or right or forward or back.");
-    } else {
-      arrowShape.style.fill = COLOR_GOOD;
-      hideInstructionMessage();
-    }
 
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
 
-   // This calculation was moved up but still used for the arrow position
    if (nextHeadingIndex === 0 && degreesRotated > 180) {
-       degreesRotated = 0; // Prevent the arrow from jumping left
+       degreesRotated = 0;
    }
    const arrowLeftPercent = 10 + (degreesRotated / 360) * 80;
    scanArrowContainer.style.left = `${arrowLeftPercent}%`;
@@ -553,7 +568,8 @@
     currentHeading = 0;
     startHeading = 0;
     countdownStartTimer = null;
-    isVelocityCheckActive = false; // MODIFICATION: Reset for new scan
+    isVelocityCheckActive = false;
+    smoothedAngularVelocity = 0; // MODIFICATION: Reset for new scan
     
     progressDisplay.innerHTML = '';
     hideInstructionMessage();
