@@ -430,7 +430,7 @@
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
 
-    // MODIFICATION: Corrected beep logic ramp
+    // Corrected beep logic ramp
     const velocityRatio = Math.min(1, smoothedAngularVelocity / VELOCITY_WARNING_THRESHOLD);
     currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
     
@@ -695,10 +695,9 @@
    }
   }
  });
- // Submit button logic (unchanged) will be wired up later
+ 
  async function submitAction() {
   if (capturedFrames.length === 0) { return; }
-  appStatus.textContent = "Zipping files...";
   try {
    const zip = new JSZip();
    capturedFrames.forEach((dataUrl, index) => {
@@ -715,10 +714,8 @@
    downloadLink.click();
    document.body.removeChild(downloadLink);
    URL.revokeObjectURL(url);
-   appStatus.textContent = "Download started!";
   } catch(err) {
    console.error("Error creating zip file:", err);
-   appStatus.textContent = "Error creating file!";
   }
  }
 
