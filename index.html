@@ -431,12 +431,10 @@
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
 
-    // MODIFICATION: New beep logic
-    if (isVelocityCheckActive && smoothedAngularVelocity > VELOCITY_WARNING_THRESHOLD) {
-        currentBeepInterval = MIN_BEEP_INTERVAL;
-    } else {
-        currentBeepInterval = MAX_BEEP_INTERVAL;
-    }
+    // MODIFICATION: New beep logic reinstated
+    const velocityRatio = Math.min(smoothedAngularVelocity, VELOCITY_DANGER_THRESHOLD) / VELOCITY_DANGER_THRESHOLD;
+    currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
+
     
     // Corrected Warning Logic
     let warningMessageToShow = null;
@@ -470,7 +468,6 @@
         showInstructionMessage(warningMessageToShow);
         arrowShape.style.fill = COLOR_OK;
     } else {
-        // Only start a hide timer if the message is visible AND there isn't one already running.
         if (instructionMessageBox.style.display === 'block' && !messageHideTimeout) {
             messageHideTimeout = setTimeout(() => {
                 hideInstructionMessage();
@@ -511,8 +508,8 @@
        hideInstructionMessage();
        clearTimeout(beepTimeoutId);
        // MODIFICATION: Adjusted final arrow position
-       scanArrowContainer.style.left = 'calc(95% - 78px)';
-       scanArrowContainer.style.top = 'calc(50% - 34.5px)';
+       scanArrowContainer.style.left = 'calc(95% - 73px)';
+       scanArrowContainer.style.top = 'calc(50% - 29.5px)';
        scanArrowContainer.style.transform = 'rotate(0deg)';
        arrowShape.style.fill = 'var(--target-color-light)';
        arrowShape.style.stroke = '#FFFFFF';
