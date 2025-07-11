@@ -74,6 +74,19 @@
   position: absolute; top: 50%; left: 5%; right: 5%; height: 2px;
   background-color: #e74c3c; transform: translateY(-50%);
  }
+ #instructionMessageBox {
+  display: none; position: absolute; bottom: 10%; left: 50%;
+  transform: translateX(-50%); width: 75%; max-width: 300px;
+  background-color: rgba(190, 190, 190, 0.85);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  color: #000; font-weight: 500; padding: 1rem; border-radius: 15px;
+  text-align: center; font-size: 0.9rem; line-height: 1.4; z-index: 20;
+ }
+ #countdownDisplay {
+  display: none; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); font-size: 20rem; font-weight: 700;
+  color: white; text-shadow: 2px 2px 8px rgba(0,0,0,0.6); z-index: 25;
+ }
  .control-panel { display: none; } /* Hidden for now */
  .progress-display { display: flex; align-items: center; gap: 0; padding: 12px; overflow-x: auto; min-height: 52px; box-sizing: border-box;}
  .progress-frame { flex-shrink: 0; height: 50px; width: 37.5px; background-color: var(--secondary-bg); border-radius: 4px; border: 1px solid #CCC; background-size: cover; background-position: center; cursor: pointer; }
@@ -129,6 +142,10 @@
       </svg>
     </div>
     <div class="scan-line"></div>
+    <div id="instructionMessageBox">
+       Get ready to slowly pan the camera... stay on the red line, and keep steady for best results.
+    </div>
+    <div id="countdownDisplay"></div>
    </div>
   </div>
  </div>
@@ -157,10 +174,8 @@
  const videoElement = document.getElementById('video-feed');
  const scanArrowContainer = document.getElementById('scanArrowContainer');
  const arrowShape = document.getElementById('arrow-shape');
- const scanControlBtn = document.getElementById('scan-control-btn'); // Will be used later
- const resetBtn = document.getElementById('reset-btn'); // Will be used later
- const rescanBtn = document.getElementById('rescan-btn'); // Will be used later
- const submitBtn = document.getElementById('submit-btn'); // Will be used later
+ const instructionMessageBox = document.getElementById('instructionMessageBox');
+ const countdownDisplay = document.getElementById('countdownDisplay');
  const appStatus = document.getElementById('app-status');
  const progressDisplay = document.getElementById('progress-display');
  const reviewOverlay = document.getElementById('review-overlay');
@@ -171,14 +186,14 @@
  const permissionError = document.getElementById('permission-error');
 
  // --- State and Configuration Variables ---
- let isAligned = false, alignmentTimer = null;
+ let countdownStartTimer = null, isCountdownActive = false;
  let scanState = 'pre-scan'; // 'pre-scan', 'scanning', 'paused', 'complete'
  let capturedFrames = [];
  let videoStream = null;
  let imageCaptureController = null;
  let isCapturing = false;
 
- const ALIGNMENT_HOLD_TIME = 1000;
+ const COUNTDOWN_HOLD_TIME = 4000;
  const TARGET_PITCH = 80; // Phone tilted 10 degrees forward from vertical (90)
  const DEGREES_PER_FRAME = 60;
  const TOTAL_FRAMES = 360 / DEGREES_PER_FRAME;
@@ -187,7 +202,7 @@
  const SENSITIVITY = 1.5; // Multiplier for arrow vertical movement
 
  // Colors for alignment arrow from File 2
- const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = '#e74c3c';
+ const COLOR_GOOD = '#FFFFFF', COLOR_OK = '#f1c40f', COLOR_BAD = '#e74c3c';
 
  let currentHeading = 0, startHeading = 0;
  let targetHeadings = [], nextHeadingIndex = 0;
@@ -256,8 +271,38 @@
 
  function startListening() { window.addEventListener('deviceorientation', handleOrientation); }
 
+ // --- Countdown and Scan Start Logic ---
+ function startCountdownSequence() {
+  isCountdownActive = true;
+  countdownStartTimer = null; // Clear the timer
+  instructionMessageBox.style.display = 'none';
+  countdownDisplay.style.display = 'block';
+
+  let count = 3;
+  countdownDisplay.textContent = count;
+  const countdownInterval = setInterval(() => {
+   count--;
+   if (count > 0) {
+    countdownDisplay.textContent = count;
+   } else {
+    clearInterval(countdownInterval);
+    countdownDisplay.style.display = 'none';
+    isCountdownActive = false;
+    beginCaptureProcess();
+   }
+  }, 1000);
+ }
+
+ function beginCaptureProcess() {
+  scanState = 'scanning';
+  appStatus.textContent = 'Rotate slowly to your right';
+  // Future steps will add frame capture and rotation tracking logic here.
+ }
+
  // --- Core Logic: Handle Orientation ---
  async function handleOrientation(event) {
+  if (isCountdownActive) return; // Pause updates during countdown
+
   let { alpha, beta, gamma } = event;
   if (alpha === null || beta === null || gamma === null) return;
 
@@ -268,22 +313,29 @@
   const rotation = -smoothedRoll;
   scanArrowContainer.style.transform = `rotate(${rotation}deg)`;
 
+  const pitchOffset = beta - TARGET_PITCH;
+
   if (scanState === 'pre-scan') {
    // Vertical positioning of the arrow based on pitch (beta)
-   const pitchOffset = beta - TARGET_PITCH;
    scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)))}%`;
 
-   // Color change based on pitch deviation
+   // Color change and countdown logic based on pitch deviation
    const deviation = Math.abs(pitchOffset);
    if (deviation < PITCH_TOLERANCE_GOOD) {
    arrowShape.style.fill = COLOR_GOOD;
-   if (!isAligned && alignmentTimer === null) {
-    alignmentTimer = setTimeout(() => { setAlignedState(true); }, ALIGNMENT_HOLD_TIME);
+   appStatus.textContent = 'Hold Steady to Begin';
+   instructionMessageBox.style.display = 'block';
+   if (countdownStartTimer === null) {
+    countdownStartTimer = setTimeout(startCountdownSequence, COUNTDOWN_HOLD_TIME);
    }
    } else {
    arrowShape.style.fill = (deviation < PITCH_TOLERANCE_OK) ? COLOR_OK : COLOR_BAD;
-   if (alignmentTimer) { clearTimeout(alignmentTimer); alignmentTimer = null; }
-   if (isAligned) { setAlignedState(false); }
+   appStatus.textContent = 'Align to Start';
+   instructionMessageBox.style.display = 'none';
+   if (countdownStartTimer) {
+    clearTimeout(countdownStartTimer);
+    countdownStartTimer = null;
+   }
    }
   } else if (scanState === 'scanning') {
    // This logic will be implemented in a future step.
@@ -293,19 +345,8 @@
   }
  }
 
- // --- UI State Management ---
- function setAlignedState(isNowAligned) {
-  isAligned = isNowAligned;
-  // In the future, this will enable the "Start" button.
-  // For now, it just updates the status text.
-  if (scanState === 'pre-scan') {
-   appStatus.textContent = isAligned ? 'Ready to Start' : 'Align to Start';
-  }
- }
-
 
  // --- UNCHANGED FUNCTIONS (to be used in later steps) ---
-
  function updateProgressDisplay(dataUrl, index) {
   const frameDiv = document.createElement('div');
   frameDiv.className = 'progress-frame';
@@ -376,7 +417,8 @@
   nextHeadingIndex = 0; isCapturing = false; progressDisplay.innerHTML = '';
   // Will add button visibility logic later
   reviewOverlay.style.display = 'none'; currentReviewIndex = -1;
-  videoElement.play(); setAlignedState(false);
+  videoElement.play();
+  appStatus.textContent = 'Align to Start';
  }
 
  // --- Event Listeners ---
