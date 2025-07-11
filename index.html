@@ -259,8 +259,9 @@
   let audioContext = null;
   let beepTimeoutId = null;
   let currentBeepInterval = 2000;
+  // MODIFICATION: Adjusted beep intervals
   const MAX_BEEP_INTERVAL = 2000;
-  const MIN_BEEP_INTERVAL = 10;
+  const MIN_BEEP_INTERVAL = 200;
 
  // --- Permission Handling & Audio Setup ---
  async function requestAllPermissions() {
@@ -430,10 +431,14 @@
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
 
-    const velocityRatio = Math.min(smoothedAngularVelocity, VELOCITY_DANGER_THRESHOLD) / VELOCITY_DANGER_THRESHOLD;
-    currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
-
-    // --- Corrected Warning Logic ---
+    // MODIFICATION: New beep logic
+    if (isVelocityCheckActive && smoothedAngularVelocity > VELOCITY_WARNING_THRESHOLD) {
+        currentBeepInterval = MIN_BEEP_INTERVAL;
+    } else {
+        currentBeepInterval = MAX_BEEP_INTERVAL;
+    }
+    
+    // Corrected Warning Logic
     let warningMessageToShow = null;
     let isDangerCondition = false;
     
@@ -469,13 +474,14 @@
         if (instructionMessageBox.style.display === 'block' && !messageHideTimeout) {
             messageHideTimeout = setTimeout(() => {
                 hideInstructionMessage();
-                arrowShape.style.fill = COLOR_GOOD; // Set back to good when message finally hides
+                arrowShape.style.fill = COLOR_GOOD;
                 messageHideTimeout = null;
-            }, 500); // MODIFICATION: Timeout set to 500ms
+            }, 500);
         }
-        // If there's no pending timeout, we're in a good state.
         if (!messageHideTimeout) {
             arrowShape.style.fill = COLOR_GOOD;
+        } else {
+             arrowShape.style.fill = COLOR_OK;
         }
     }
 
@@ -505,8 +511,8 @@
        hideInstructionMessage();
        clearTimeout(beepTimeoutId);
        // MODIFICATION: Adjusted final arrow position
-       scanArrowContainer.style.left = 'calc(95% - 58px)';
-       scanArrowContainer.style.top = 'calc(50% - 21.5px)';
+       scanArrowContainer.style.left = 'calc(95% - 78px)';
+       scanArrowContainer.style.top = 'calc(50% - 34.5px)';
        scanArrowContainer.style.transform = 'rotate(0deg)';
        arrowShape.style.fill = 'var(--target-color-light)';
        arrowShape.style.stroke = '#FFFFFF';
