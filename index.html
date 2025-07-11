@@ -207,12 +207,10 @@
  const TOTAL_FRAMES = 360 / DEGREES_PER_FRAME;
  const CAPTURE_WINDOW_DEGREES = 5.0;
 
- // Alignment tolerances for PRE-SCAN (pitch only)
+ // Alignment tolerances
  const PITCH_TOLERANCE_GOOD = 5;
  const PITCH_TOLERANCE_OK = 10;
- // Alignment tolerances for DURING-SCAN (combined pitch and roll)
- const SCAN_MISALIGNMENT_GOOD = 10;
- const SCAN_MISALIGNMENT_OK = 20;
+ const SCAN_TOLERANCE = 10; // Looser tolerance for during scan
 
  const SENSITIVITY = 1.5;
   const ARROW_HALF_HEIGHT_PX = 21.5;
@@ -366,12 +364,10 @@
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
 
    const misalignment = Math.sqrt(Math.pow(pitchOffset, 2) + Math.pow(smoothedRoll, 2));
-    if (misalignment < SCAN_MISALIGNMENT_GOOD) {
+    if (misalignment < SCAN_TOLERANCE) {
         arrowShape.style.fill = COLOR_GOOD;
-    } else if (misalignment < SCAN_MISALIGNMENT_OK) {
-        arrowShape.style.fill = COLOR_OK;
     } else {
-        arrowShape.style.fill = COLOR_BAD;
+        arrowShape.style.fill = COLOR_OK; // Only white or yellow during scan
     }
 
    // --- Horizontal Progress ---
@@ -403,52 +399,9 @@
   }
  }
 
- // --- UNCHANGED FUNCTIONS ---
- function updateProgressDisplay(dataUrl, index) {
-  const frameDiv = document.createElement('div');
-  frameDiv.className = 'progress-frame';
-  frameDiv.style.backgroundImage = `url(${dataUrl})`;
-  frameDiv.addEventListener('click', () => showReviewImage(index));
-  progressDisplay.appendChild(frameDiv);
- }
-
- function toggleZoom() {
-  isZoomed = !isZoomed;
-  reviewImage.classList.toggle('zoomed-in', isZoomed);
-  reviewInstructions.style.display = isZoomed ? 'none' : 'block';
-  if (isZoomed) {
-   reviewOverlay.style.justifyContent = 'flex-start';
-   reviewOverlay.style.alignItems = 'flex-start';
-   requestAnimationFrame(() => {
-    reviewOverlay.scrollLeft = (reviewImage.scrollWidth - reviewOverlay.clientWidth) / 2;
-    reviewOverlay.scrollTop = (reviewImage.scrollHeight - reviewOverlay.clientHeight) / 2;
-   });
-  } else {
-   reviewOverlay.style.justifyContent = 'center';
-   reviewOverlay.style.alignItems = 'center';
-   reviewOverlay.scrollTop = 0;
-   reviewOverlay.scrollLeft = 0;
-  }
- }
-
- function showReviewImage(index) {
-  if ((scanState !== 'paused' && scanState !== 'complete') || index < 0 || index >= capturedFrames.length) return;
-  currentReviewIndex = index;
-  reviewImage.src = capturedFrames[currentReviewIndex];
-  reviewOverlay.style.display = 'flex';
- }
-
- function hideReviewImage() {
-  clearTimeout(tapTimer);
-  tapTimer = null;
-  reviewOverlay.style.display = 'none';
-  currentReviewIndex = -1;
-  if (isZoomed) { toggleZoom(); }
- }
-
+ // --- Capture and Display Functions ---
  async function captureFrame() {
-  if (isCapturing) return;
-  isCapturing = true; // Prevent re-entry
+  isCapturing = true;
   if (!imageCaptureController) {
    const canvas = document.createElement('canvas');
    canvas.width = videoElement.videoWidth;
@@ -473,6 +426,49 @@
   isCapturing = false;
  }
 
+ function updateProgressDisplay(dataUrl, index) {
+  const frameDiv = document.createElement('div');
+  frameDiv.className = 'progress-frame';
+  frameDiv.style.backgroundImage = `url(${dataUrl})`;
+  frameDiv.addEventListener('click', () => showReviewImage(index));
+  progressDisplay.appendChild(frameDiv);
+ }
+
+ function showReviewImage(index) {
+  if ((scanState !== 'paused' && scanState !== 'complete') || index < 0 || index >= capturedFrames.length) return;
+  currentReviewIndex = index;
+  reviewImage.src = capturedFrames[currentReviewIndex];
+  reviewOverlay.style.display = 'flex';
+ }
+
+ function hideReviewImage() {
+  clearTimeout(tapTimer);
+  tapTimer = null;
+  reviewOverlay.style.display = 'none';
+  currentReviewIndex = -1;
+  if (isZoomed) { toggleZoom(); }
+ }
+ 
+ function toggleZoom() {
+  isZoomed = !isZoomed;
+  reviewImage.classList.toggle('zoomed-in', isZoomed);
+  reviewInstructions.style.display = isZoomed ? 'none' : 'block';
+  if (isZoomed) {
+   reviewOverlay.style.justifyContent = 'flex-start';
+   reviewOverlay.style.alignItems = 'flex-start';
+   requestAnimationFrame(() => {
+    reviewOverlay.scrollLeft = (reviewImage.scrollWidth - reviewOverlay.clientWidth) / 2;
+    reviewOverlay.scrollTop = (reviewImage.scrollHeight - reviewOverlay.clientHeight) / 2;
+   });
+  } else {
+   reviewOverlay.style.justifyContent = 'center';
+   reviewOverlay.style.alignItems = 'center';
+   reviewOverlay.scrollTop = 0;
+   reviewOverlay.scrollLeft = 0;
+  }
+ }
+
+ // --- UNCHANGED FUNCTIONS ---
  function resetScan() {
   scanState = 'pre-scan'; capturedFrames = []; targetHeadings = [];
   nextHeadingIndex = 0; isCapturing = false; progressDisplay.innerHTML = '';
