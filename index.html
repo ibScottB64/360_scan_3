@@ -254,20 +254,21 @@
   let isVelocityCheckActive = false;
   let smoothedAngularVelocity = 0;
 
-  // MODIFICATION: State for message timer and audio
+  // State for message timer and audio
   let messageHideTimeout = null;
   let audioContext = null;
   let beepTimeoutId = null;
-  let currentBeepInterval = 2000; //ms
-  const MAX_BEEP_INTERVAL = 2000; // Longest interval
-  const MIN_BEEP_INTERVAL = 100;  // Shortest interval
+  let currentBeepInterval = 1000; //ms
+  // MODIFICATION: Adjusted beep intervals
+  const MAX_BEEP_INTERVAL = 1000; // 1 beep/sec
+  const MIN_BEEP_INTERVAL = 200;  // 5 beeps/sec
 
  // --- Permission Handling & Audio Setup ---
  async function requestAllPermissions() {
   startCaptureButton.disabled = true;
   startCaptureButton.textContent = 'Requesting Access...';
 
-  // MODIFICATION: Initialize AudioContext on user interaction
+  // Initialize AudioContext on user interaction
   if (!audioContext) {
       try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -362,7 +363,7 @@
   smoothedAngularVelocity = 0;
 
   await captureFrame();
-  scheduleNextBeep(); // MODIFICATION: Start the beep loop
+  scheduleNextBeep(); // Start the beep loop
 
   for (let i = 0; i < TOTAL_FRAMES - 1; i++) {
    const nextTarget = startHeading - ((i + 1) * DEGREES_PER_FRAME);
@@ -427,12 +428,12 @@
     previousHeading = currentHeading;
     lastHeadingTimestamp = currentTime;
 
-    // MODIFICATION: Map smoothed velocity to beep interval
+    // Map smoothed velocity to beep interval
     const velocityRatio = Math.min(smoothedAngularVelocity, VELOCITY_DANGER_THRESHOLD) / VELOCITY_DANGER_THRESHOLD;
     currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
 
 
-    // --- MODIFICATION: New Warning Logic with Non-flicker Timer ---
+    // New Warning Logic with Non-flicker Timer
     clearTimeout(messageHideTimeout);
     messageHideTimeout = null;
 
@@ -464,7 +465,7 @@
             messageHideTimeout = setTimeout(hideInstructionMessage, 500);
         }
     }
-    // --- End of new warning logic ---
+    
     if (scanState === 'error') return;
 
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
@@ -588,7 +589,7 @@
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
-    clearTimeout(beepTimeoutId); // MODIFICATION: Stop beep loop on reset
+    clearTimeout(beepTimeoutId); // Stop beep loop on reset
     scanState = 'pre-scan';
     capturedFrames = [];
     targetHeadings = [];
@@ -610,7 +611,7 @@
     arrowShape.style.fill = COLOR_BAD;
  }
 
- // --- MODIFICATION: Audio Functions ---
+ // Audio Functions
  function playBeep() {
     if (!audioContext) return;
     const oscillator = audioContext.createOscillator();
