@@ -71,8 +71,13 @@
  }
  #arrow-shape { transition: fill 0.2s linear; }
  .scan-line {
-  position: absolute; top: 50%; left: 5%; right: 5%; height: 2px;
-  background-color: #e74c3c; transform: translateY(-50%);
+  position: absolute;
+  top: calc(50% + 10px); /* MOVED DOWN 10px */
+  left: 5%;
+  right: 5%;
+  height: 2px;
+  background-color: #e74c3c;
+  transform: translateY(-50%);
  }
  #instructionMessageBox {
   display: none; position: absolute;
