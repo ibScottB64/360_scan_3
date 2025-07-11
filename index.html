@@ -246,7 +246,7 @@
  async function initializeApp() {
   try {
    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-   videoElement.srcObject = stream;
+   videoElement.srcObject = videoStream;
 
    if ('ImageCapture' in window) {
   const videoTrack = videoStream.getVideoTracks()[0];
