@@ -1,488 +1,449 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Room Scan</title>
-    <style>
-        /* General Body and Reset Styles */
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #333;
-            color: #f0f0f0;
-        }
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+ <title>360 Room Scan</title>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+ <style>
+ /* --- Base Styles from File 1 --- */
+ :root {
+ --primary-bg: #FFFFFF; --secondary-bg: #EAEAF0; --camera-bg: #C5C6E0; --accent-color: #007BFF;
+ --accent-text-color: #FFFFFF; --disabled-color: #B0B0B0;
+ --target-color-light: #A3E635;
+ --text-color: #333333; --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+ }
+ /* --- General Body and Reset Styles from File 2 --- */
+ body, html {
+  margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #333; color: #f0f0f0;
+ }
+ /* --- Screen containers --- */
+ .screen {
+  width: 100%; height: 100%; display: flex;
+  flex-direction: column; box-sizing: border-box;
+ }
+ .hidden { display: none !important; }
 
-        /* Base styles for the two main screens */
-        .screen {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-        }
+ /* --- Instruction Screen Styles (from File 2) --- */
+ #instructionScreen {
+  justify-content: center; align-items: center; padding: 2rem;
+  text-align: center;
+ }
+ #instructionScreen h1 { font-size: 1.8rem; font-weight: 500; margin-bottom: 3rem; }
+ #instructionScreen ul { list-style: none; padding: 0; margin: 0; max-width: 400px; }
+ #instructionScreen li { display: flex; align-items: center; text-align: left; margin-bottom: 2rem; font-size: 1rem; }
+ #instructionScreen .icon { width: 32px; height: 32px; margin-right: 1.5rem; fill: #f0f0f0; flex-shrink: 0; }
+ #startCaptureButton {
+  position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
+  width: 80%; max-width: 400px; padding: 1rem; font-size: 1.1rem;
+  font-weight: 500; color: #f0f0f0; background-color: transparent;
+  border: 2px solid #888; border-radius: 2rem; cursor: pointer;
+ }
+ #startCaptureButton:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* --- Instruction Screen Styles --- */
-        #instructionScreen {
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-            text-align: center;
-        }
+ /* --- Main App/Capture Screen Styles --- */
+ .app-container {
+  display: grid; grid-template-rows: auto 1fr auto; width: 100%;
+  max-width: 480px; height: 100dvh; margin: 0 auto;
+  background-color: #000; box-shadow: 0 0 20px rgba(0,0,0,0.1);
+ }
+ .main-content { display: flex; min-height: 0; }
+ .camera-view-container {
+  flex-grow: 1; position: relative; min-width: 0; background-color: #111;
+ }
+ .camera-view-container::before { content: ''; display: block; padding-bottom: 133.33%; }
+ .camera-view {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  overflow: hidden;
+ }
+ #video-feed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 
-        #instructionScreen h1 {
-            font-size: 1.8rem;
-            font-weight: 500;
-            margin-bottom: 3rem;
-        }
+ /* --- Overlays for Video (from File 2) --- */
+ .scan-overlay {
+  position: absolute; top: 2%; left: 5%; right: 5%; bottom: 2%;
+  border: 3px dashed rgba(255, 255, 255, 0.7); border-radius: 10px;
+ }
+ .scan-arrow {
+  position: absolute; top: 50%; left: 10px; transform: translateY(-50%);
+  width: 58px; height: 43px; transition: top 0.1s linear;
+ }
+ #arrow-shape { transition: fill 0.2s linear; }
+ .scan-line {
+  position: absolute; top: 50%; left: 5%; right: 5%; height: 2px;
+  background-color: #e74c3c; transform: translateY(-50%);
+ }
+ .control-panel { display: none; } /* Hidden for now */
+ .progress-display { display: flex; align-items: center; gap: 0; padding: 12px; overflow-x: auto; min-height: 52px; box-sizing: border-box;}
+ .progress-frame { flex-shrink: 0; height: 50px; width: 37.5px; background-color: var(--secondary-bg); border-radius: 4px; border: 1px solid #CCC; background-size: cover; background-position: center; cursor: pointer; }
+ .app-status { padding: 16px; text-align: center; font-size: 1.3rem; font-weight: 500; border-top: 1px solid #333; color: #f0f0f0; background-color: #1a1a1a;}
 
-        #instructionScreen ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            max-width: 400px;
-        }
-
-        #instructionScreen li {
-            display: flex;
-            align-items: center;
-            text-align: left;
-            margin-bottom: 2rem;
-            font-size: 1rem;
-        }
-
-        #instructionScreen .icon {
-            width: 32px;
-            height: 32px;
-            margin-right: 1.5rem;
-            fill: #f0f0f0;
-            flex-shrink: 0;
-        }
-
-        #startCaptureButton {
-            position: absolute;
-            bottom: 5%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            max-width: 400px;
-            padding: 1rem;
-            font-size: 1.1rem;
-            font-weight: 500;
-            color: #f0f0f0;
-            background-color: transparent;
-            border: 2px solid #888;
-            border-radius: 2rem;
-            cursor: pointer;
-        }
-        
-        #startCaptureButton:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* --- Capture Screen Styles --- */
-        #captureScreen {
-            display: none; /* Initially hidden */
-            background-color: #000;
-            justify-content: flex-start; /* Align content to the top */
-        }
-
-        .capture-header {
-            display: flex;
-            align-items: center;
-            padding: 1rem;
-            background-color: #1a1a1a;
-            color: #f0f0f0;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-            z-index: 10;
-        }
-
-        .capture-header .icon {
-            width: 28px;
-            height: 28px;
-            margin-right: 0.75rem;
-            fill: #3498db;
-        }
-        
-        .video-container {
-            flex: 9;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-            background-color: #111;
-            min-height: 0; 
-        }
-
-        #videoElement {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* --- Overlays for Video --- */
-        .scan-overlay {
-            position: absolute;
-            top: 2%;
-            left: 5%;
-            right: 5%;
-            bottom: 2%;
-            border: 3px dashed rgba(255, 255, 255, 0.7);
-            border-radius: 10px;
-        }
-        
-        .scan-arrow {
-            position: absolute;
-            top: 50%;
-            left: 10px;
-            transform: translateY(-50%);
-            width: 58px;
-            height: 43px;
-            transition: top 0.2s linear, left 0.2s linear;
-        }
-
-        #arrow-shape {
-            transition: fill 0.2s linear;
-        }
-
-        .scan-line {
-            position: absolute;
-            top: 50%;
-            left: 5%;
-            right: 5%;
-            height: 2px;
-            background-color: #e74c3c;
-            transform: translateY(-50%);
-        }
-        
-        #instructionMessageBox {
-            display: none;
-            position: absolute;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 75%;
-            max-width: 300px;
-            background-color: rgba(190, 190, 190, 0.85);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            color: #000;
-            font-weight: 500;
-            padding: 1rem;
-            border-radius: 15px;
-            text-align: center;
-            font-size: 0.9rem;
-            line-height: 1.4;
-            z-index: 20;
-        }
-
-        #countdownDisplay {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 20rem;
-            font-weight: 700;
-            color: white;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
-            z-index: 25;
-        }
-
-        /* --- Thumbnail Area Styles --- */
-        .thumbnail-area {
-            flex: 1;
-            background-color: #000;
-            display: flex;
-            align-items: center;
-            padding: 1vh 10px;
-            box-sizing: border-box;
-            overflow-x: auto;
-            min-height: 0;
-        }
-        .thumbnail-area img {
-            height: 100%;
-            width: auto;
-            margin: 0 5px;
-            border-radius: 5px;
-            border: 2px solid #555;
-        }
-
-        /* --- New UI elements from Mockup --- */
-        #slowDownMessage {
-            display: none;
-            position: absolute;
-            bottom: 25%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 1rem;
-            background-color: rgba(90, 90, 90, 0.85);
-            color: white;
-            border-radius: 15px;
-            z-index: 30;
-            text-align: center;
-            width: 80%;
-            max-width: 320px;
-        }
-
-        #progressCircle {
-            display: none;
-            position: absolute;
-            bottom: 5%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 70px;
-            height: 70px;
-            z-index: 30;
-        }
-
-        #progressCircle circle {
-            transition: stroke-dashoffset 0.2s linear;
-        }
-    </style>
+ /* --- Unchanged Overlay Styles --- */
+ #permission-overlay {
+  position: fixed; top: 0; left: 0; z-index: 100; width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.75); color: white; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box;
+ }
+ #permission-overlay.hidden { display: none; }
+ #review-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9);
+  display: none; justify-content: center; align-items: center; z-index: 200; overflow: auto;
+ }
+ #review-image { max-width: 95%; max-height: 95%; object-fit: contain; cursor: pointer; }
+ #review-image.zoomed-in { max-width: none; max-height: none; cursor: zoom-out; }
+ #review-instructions {
+  position: absolute; bottom: 20px; left: 0; right: 0; text-align: center;
+  color: rgba(255,255,255,0.8); font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none;
+ }
+ </style>
 </head>
 <body>
 
-    <!-- =========== INSTRUCTION SCREEN =========== -->
-    <div id="instructionScreen" class="screen">
-        <div class="content">
-            <h1>Testing space video scan instructions</h1>
-            <ul>
-                <li><svg class="icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2A1,1 0 0,1 13,3V4A1,1 0 0,1 12,5A1,1 0 0,1 11,4V3A1,1 0 0,1 12,2M19.07,4.93A1,1 0 0,1 20.5,6.34L19.79,7.05A1,1 0 0,1 18.38,5.64L19.07,4.93M4.93,19.07A1,1 0 0,1 6.34,20.5L7.05,19.79A1,1 0 0,1 5.64,18.38L4.93,19.07M18.38,18.38A1,1 0 0,1 19.79,19.79L20.5,19.07A1,1 0 0,1 19.07,17.66L18.38,18.38M22,12A1,1 0 0,1 21,13H20A1,1 0 0,1 19,12A1,1 0 0,1 20,11H21A1,1 0 0,1 22,12M4,12A1,1 0 0,1 3,13H2A1,1 0 0,1 1,12A1,1 0 0,1 2,11H3A1,1 0 0,1 4,12M12,19A1,1 0 0,1 11,20V21A1,1 0 0,1 12,22A1,1 0 0,1 13,21V20A1,1 0 0,1 12,19Z"/></svg><span>Ensure testing space is well-lit</span></li>
-                <li><svg class="icon" viewBox="0 0 24 24"><path d="M2 12h20v2H2zm2-4h2v2H4zm14 0h2v2h-2zM2 6h20v2H2zm18 8H4v6h2v-2h12v2h2z"/></svg><span>Stand in the middle of your testing space facing your desk.</span></li>
-                <li><svg class="icon" viewBox="0 0 24 24"><path d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg><span>Hold your mobile phone in portrait mode and as level as possible.</span></li>
-                <li><svg class="icon" viewBox="0 0 24 24"><path d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C14.5,20.7 9.4,20.7 6.3,17.6C5.1,16.5 4.3,15.1 4,13.5H6.1C6.4,14.6 7.1,15.6 7.9,16.4C10.3,18.8 14.3,18.8 16.7,16.4C19.1,14 19.1,10 16.7,7.6C15.6,6.5 14,6 12.3,6L13.1,6.8L11.7,8.2L8.2,4.7L11.7,1.2L13.1,2.6L12,3.8C12,3.8 12,3.9 12,4M12,19.9C11.7,19.9 11.4,20 11.1,20C6.6,20 3,16.4 3,11.9C3,11.6 3,11.3 3,11H1C1,11.3 1,11.6 1,11.9C1,17.5 5.5,22 11.1,22C11.4,22 11.7,22 12,21.9V19.9Z"/></svg><span>When prompted start rotating to your right 360&deg;</span></li>
-                <li><svg class="icon" viewBox="0 0 24 24"><path d="M12.2,19.9C14.6,19.9 16.6,17.9 16.6,15.5C16.6,13.1 14.6,11.1 12.2,11.1C11.2,11.1 9.9,11.9 9.9,11.9C9.9,11.9 9.3,11.4 8.2,11.1C6.2,10.5 4.1,11.9 3.5,13.9C2.8,15.9 4.2,18 6.2,18.7C6.6,18.8 7.1,18.9 7.6,18.9C8.6,18.9 9.6,18.5 10.3,17.7C10.3,17.7 10.6,18.9 12.2,19.9M18,12.5C19.4,12.5 20.5,11.4 20.5,10C20.5,8.6 19.4,7.5 18,7.5C16.6,7.5 15.5,8.6 15.5,10C15.5,11.4 16.6,12.5 18,12.5M19.5,6.5C20.6,6.5 21.5,5.6 21.5,4.5C21.5,3.4 20.6,2.5 19.5,2.5C18.4,2.5 17.5,3.4 17.5,4.5C17.5,5.6 18.4,6.5 19.5,6.5Z"/></svg><span>Move slowly to ensure proper capturing of your environment.</span></li>
-            </ul>
-        </div>
-        <button id="startCaptureButton">Capture video</button>
+<!-- =========== INSTRUCTION SCREEN (from File 2) =========== -->
+<div id="instructionScreen" class="screen">
+ <div class="content">
+  <h1>Testing space video scan instructions</h1>
+  <ul>
+   <li><svg class="icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2A1,1 0 0,1 13,3V4A1,1 0 0,1 12,5A1,1 0 0,1 11,4V3A1,1 0 0,1 12,2M19.07,4.93A1,1 0 0,1 20.5,6.34L19.79,7.05A1,1 0 0,1 18.38,5.64L19.07,4.93M4.93,19.07A1,1 0 0,1 6.34,20.5L7.05,19.79A1,1 0 0,1 5.64,18.38L4.93,19.07M18.38,18.38A1,1 0 0,1 19.79,19.79L20.5,19.07A1,1 0 0,1 19.07,17.66L18.38,18.38M22,12A1,1 0 0,1 21,13H20A1,1 0 0,1 19,12A1,1 0 0,1 20,11H21A1,1 0 0,1 22,12M4,12A1,1 0 0,1 3,13H2A1,1 0 0,1 1,12A1,1 0 0,1 2,11H3A1,1 0 0,1 4,12M12,19A1,1 0 0,1 11,20V21A1,1 0 0,1 12,22A1,1 0 0,1 13,21V20A1,1 0 0,1 12,19Z"/></svg><span>Ensure testing space is well-lit</span></li>
+   <li><svg class="icon" viewBox="0 0 24 24"><path d="M2 12h20v2H2zm2-4h2v2H4zm14 0h2v2h-2zM2 6h20v2H2zm18 8H4v6h2v-2h12v2h2z"/></svg><span>Stand in the middle of your testing space facing your desk.</span></li>
+   <li><svg class="icon" viewBox="0 0 24 24"><path d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg><span>Hold your mobile phone in portrait mode and as level as possible.</span></li>
+   <li><svg class="icon" viewBox="0 0 24 24"><path d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C14.5,20.7 9.4,20.7 6.3,17.6C5.1,16.5 4.3,15.1 4,13.5H6.1C6.4,14.6 7.1,15.6 7.9,16.4C10.3,18.8 14.3,18.8 16.7,16.4C19.1,14 19.1,10 16.7,7.6C15.6,6.5 14,6 12.3,6L13.1,6.8L11.7,8.2L8.2,4.7L11.7,1.2L13.1,2.6L12,3.8C12,3.8 12,3.9 12,4M12,19.9C11.7,19.9 11.4,20 11.1,20C6.6,20 3,16.4 3,11.9C3,11.6 3,11.3 3,11H1C1,11.3 1,11.6 1,11.9C1,17.5 5.5,22 11.1,22C11.4,22 11.7,22 12,21.9V19.9Z"/></svg><span>When prompted start rotating to your right 360&deg;</span></li>
+   <li><svg class="icon" viewBox="0 0 24 24"><path d="M12.2,19.9C14.6,19.9 16.6,17.9 16.6,15.5C16.6,13.1 14.6,11.1 12.2,11.1C11.2,11.1 9.9,11.9 9.9,11.9C9.9,11.9 9.3,11.4 8.2,11.1C6.2,10.5 4.1,11.9 3.5,13.9C2.8,15.9 4.2,18 6.2,18.7C6.6,18.8 7.1,18.9 7.6,18.9C8.6,18.9 9.6,18.5 10.3,17.7C10.3,17.7 10.6,18.9 12.2,19.9M18,12.5C19.4,12.5 20.5,11.4 20.5,10C20.5,8.6 19.4,7.5 18,7.5C16.6,7.5 15.5,8.6 15.5,10C15.5,11.4 16.6,12.5 18,12.5M19.5,6.5C20.6,6.5 21.5,5.6 21.5,4.5C21.5,3.4 20.6,2.5 19.5,2.5C18.4,2.5 17.5,3.4 17.5,4.5C17.5,5.6 18.4,6.5 19.5,6.5Z"/></svg><span>Move slowly to ensure proper capturing of your environment.</span></li>
+  </ul>
+ </div>
+ <button id="startCaptureButton">Capture video</button>
+</div>
+
+<!-- =========== MAIN APP (File 1 structure with File 2 visuals) =========== -->
+<div class="app-container hidden">
+ <div class="main-content">
+  <div class="camera-view-container" id="camera-view-container">
+   <div class="camera-view" id="camera-view">
+    <video id="video-feed" autoplay playsinline muted></video>
+    <!-- Visual Overlays from File 2 -->
+    <div class="scan-overlay"></div>
+    <div id="scanArrowContainer" class="scan-arrow">
+      <svg viewBox="0 0 23 30">
+       <path id="arrow-shape" d="M0 12 L8 12 L8 5 L23 15 L8 25 L8 18 L0 18 Z" stroke="white" stroke-width="1.25" stroke-linejoin="round" />
+      </svg>
     </div>
+    <div class="scan-line"></div>
+   </div>
+  </div>
+ </div>
+ <div class="progress-display" id="progress-display"></div>
+ <footer class="app-status" id="app-status">Align to Start</footer>
+</div>
 
-    <!-- =========== VIDEO CAPTURE SCREEN =========== -->
-    <div id="captureScreen" class="screen">
-        <div class="capture-header">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z" /></svg>
-            <span>Capture testing space video</span>
-        </div>
-        <div class="video-container">
-            <video id="videoElement" autoplay playsinline muted></video>
-            <!-- Visual Overlays -->
-            <div class="scan-overlay"></div>
-            <div id="scanArrowContainer" class="scan-arrow">
-                 <svg viewBox="0 0 23 30">
-                    <path id="arrow-shape" d="M0 12 L8 12 L8 5 L23 15 L8 25 L8 18 L0 18 Z" 
-                          stroke="white" stroke-width="1.25" stroke-linejoin="round" />
-                 </svg>
-            </div>
-            <div class="scan-line"></div>
-            <div id="instructionMessageBox">
-                Get ready to slowly pan the camera in the direction of the arrow, stay on the red line, and keep steady for best results.
-            </div>
-            <div id="countdownDisplay"></div>
-            <div id="slowDownMessage">Slow down. Rotating too quickly can cause motion blur and reduce video quality.</div>
-            <div id="progressCircle">
-                <svg viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" stroke="#fff" stroke-width="10" fill="none" opacity="0.3"></circle>
-                    <circle id="progressRing" cx="50" cy="50" r="45" stroke="#f39c12" stroke-width="10" fill="none" 
-                            stroke-linecap="round" transform="rotate(-90 50 50)"
-                            stroke-dasharray="282.7" stroke-dashoffset="282.7"></circle>
-                </svg>
-            </div>
-        </div>
-        <div id="thumbnailContainer" class="thumbnail-area"></div>
-    </div>
+<!-- Overlays and other elements from File 1 -->
+<div id="permission-overlay" class="hidden">
+ <h2>Sensor & Camera Access Required</h2><p>This app needs access to your phone's motion sensors and camera to guide you through the scan.</p>
+ <button id="permission-button">Allow Access</button><p id="permission-error"></p>
+</div>
 
-    <script>
-        // DOM Elements
-        const instructionScreen = document.getElementById('instructionScreen');
-        const captureScreen = document.getElementById('captureScreen');
-        const startCaptureButton = document.getElementById('startCaptureButton');
-        const videoElement = document.getElementById('videoElement');
-        const scanArrowContainer = document.getElementById('scanArrowContainer');
-        const instructionMessageBox = document.getElementById('instructionMessageBox');
-        const arrowShape = document.getElementById('arrow-shape');
-        const countdownDisplay = document.getElementById('countdownDisplay');
-        const thumbnailContainer = document.getElementById('thumbnailContainer');
-        const progressCircle = document.getElementById('progressCircle');
-        const progressRing = document.getElementById('progressRing');
-        const slowDownMessage = document.getElementById('slowDownMessage');
+<div id="review-overlay" class="hidden">
+ <img id="review-image" alt="Reviewed Frame">
+ <p id="review-instructions">Tap to Exit | Double-Tap to Zoom | Swipe to Scroll</p>
+</div>
 
-        // State Variables
-        let greenZoneTimer = null, isCountdownActive = false, imageCapture = null;
-        let isCapturePhaseActive = false, capturedImageCount = 0;
-        let lastAlpha = null, slowDownTimer = null;
-        let accumulatedRotation = 0;
-        let isStarting = false;
+ <script>
+ document.addEventListener('DOMContentLoaded', () => {
+ // --- DOM Element References ---
+ const instructionScreen = document.getElementById('instructionScreen');
+ const startCaptureButton = document.getElementById('startCaptureButton');
+ const appContainer = document.querySelector('.app-container');
+ const cameraViewContainer = document.getElementById('camera-view-container');
+ const videoElement = document.getElementById('video-feed');
+ const scanArrowContainer = document.getElementById('scanArrowContainer');
+ const arrowShape = document.getElementById('arrow-shape');
+ const scanControlBtn = document.getElementById('scan-control-btn'); // Will be used later
+ const resetBtn = document.getElementById('reset-btn'); // Will be used later
+ const rescanBtn = document.getElementById('rescan-btn'); // Will be used later
+ const submitBtn = document.getElementById('submit-btn'); // Will be used later
+ const appStatus = document.getElementById('app-status');
+ const progressDisplay = document.getElementById('progress-display');
+ const reviewOverlay = document.getElementById('review-overlay');
+ const reviewImage = document.getElementById('review-image');
+ const reviewInstructions = document.getElementById('review-instructions');
+ const permissionOverlay = document.getElementById('permission-overlay');
+ const permissionBtn = document.getElementById('permission-button');
+ const permissionError = document.getElementById('permission-error');
 
-        // Constants
-        const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = 'red';
-        const TOTAL_IMAGES = 6;
-        const CAPTURE_ANGLE_INTERVAL = 360 / TOTAL_IMAGES;
+ // --- State and Configuration Variables ---
+ let isAligned = false, alignmentTimer = null;
+ let scanState = 'pre-scan'; // 'pre-scan', 'scanning', 'paused', 'complete'
+ let capturedFrames = [];
+ let videoStream = null;
+ let imageCaptureController = null;
+ let isCapturing = false;
 
-        startCaptureButton.addEventListener('click', () => startVideo());
+ const ALIGNMENT_HOLD_TIME = 1000;
+ const TARGET_PITCH = 80; // Phone tilted 10 degrees forward from vertical (90)
+ const DEGREES_PER_FRAME = 60;
+ const TOTAL_FRAMES = 360 / DEGREES_PER_FRAME;
+ const PITCH_TOLERANCE_GOOD = 5;
+ const PITCH_TOLERANCE_OK = 10;
+ const SENSITIVITY = 1.5; // Multiplier for arrow vertical movement
 
-        async function takePicture() {
-            if (!imageCapture || capturedImageCount >= TOTAL_IMAGES) return;
-            try {
-                const blob = await imageCapture.takePhoto();
-                const imageUrl = URL.createObjectURL(blob);
-                const img = document.createElement('img');
-                img.src = imageUrl;
-                thumbnailContainer.appendChild(img);
-                capturedImageCount++;
+ // Colors for alignment arrow from File 2
+ const COLOR_GOOD = '#2ecc71', COLOR_OK = '#f1c40f', COLOR_BAD = '#e74c3c';
 
-                if (capturedImageCount >= TOTAL_IMAGES) finishCapture();
-            } catch (error) { console.error("Error taking photo: ", error); }
-        }
+ let currentHeading = 0, startHeading = 0;
+ let targetHeadings = [], nextHeadingIndex = 0;
+ let smoothedRoll = 0;
+ const SMOOTHING_FACTOR = 0.1;
+ let currentReviewIndex = -1;
+ let touchStartX = 0, touchStartY = 0;
+ let isZoomed = false;
+ let tapTimer = null;
+ const DOUBLE_TAP_DELAY = 300;
+ const GESTURE_THRESHOLD = 50;
 
-        function beginCaptureProcess() {
-            isCapturePhaseActive = true;
-            scanArrowContainer.style.display = 'block';
-            progressCircle.style.display = 'block';
-            takePicture();
-        }
-        
-        function finishCapture() {
-            isCapturePhaseActive = false;
-            progressCircle.style.display = 'none';
-            slowDownMessage.style.display = 'none';
-            console.log("Capture complete!");
-        }
+ // --- Permission Handling (from File 1, slightly modified flow) ---
+ async function requestAllPermissions() {
+  startCaptureButton.disabled = true;
+  startCaptureButton.textContent = 'Requesting Access...';
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+  try {
+   const permissionState = await DeviceOrientationEvent.requestPermission();
+   if (permissionState === 'granted') {
+    await initializeApp();
+   } else {
+    permissionError.textContent = "Sensor permission denied.";
+    permissionOverlay.classList.remove('hidden');
+    instructionScreen.classList.add('hidden');
+   }
+  } catch (error) {
+   console.error("Sensor permission error:", error);
+   permissionError.textContent = "Could not get sensor permissions.";
+   permissionOverlay.classList.remove('hidden');
+   instructionScreen.classList.add('hidden');
+  }
+  } else {
+  await initializeApp();
+  }
+ }
 
-        function startCountdownSequence() {
-            isCountdownActive = true;
-            greenZoneTimer = null;
-            instructionMessageBox.style.display = 'none';
-            countdownDisplay.style.display = 'block';
+ async function initializeApp() {
+  try {
+   videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+   videoElement.srcObject = videoStream;
 
-            let count = 3;
-            countdownDisplay.textContent = count;
-            const countdownInterval = setInterval(() => {
-                count--;
-                if (count > 0) {
-                    countdownDisplay.textContent = count;
-                } else {
-                    clearInterval(countdownInterval);
-                    countdownDisplay.style.display = 'none';
-                    isCountdownActive = false;
-                    beginCaptureProcess();
-                }
-            }, 1000);
-        }
+   if ('ImageCapture' in window) {
+  const videoTrack = videoStream.getVideoTracks()[0];
+  imageCaptureController = new ImageCapture(videoTrack);
+   } else {
+  console.warn("ImageCapture API not supported. Falling back to lower quality captures.");
+   }
 
-        function handleOrientation(event) {
-            if (isCountdownActive) return;
-            const { beta, alpha } = event;
-            if (beta === null || alpha === null) return;
+   videoElement.onloadedmetadata = () => {
+  const { videoWidth, videoHeight } = videoElement;
+  const aspectRatio = videoHeight / videoWidth;
+  cameraViewContainer.style.setProperty('--aspect-ratio', aspectRatio);
+  cameraViewContainer.style.paddingBottom = `calc(100% * var(--aspect-ratio, 1.3333))`;
+   };
+   startListening();
+   instructionScreen.classList.add('hidden');
+   appContainer.classList.remove('hidden');
+  } catch (err) {
+   console.error("Camera error:", err);
+   permissionError.textContent = "Camera access denied. Please check settings.";
+   permissionOverlay.classList.remove('hidden');
+   instructionScreen.classList.add('hidden');
+  }
+ }
 
-            if (!isCapturePhaseActive) {
-                const TARGET_ANGLE = 90.0, SENSITIVITY = 1.5;
-                const deviation = Math.abs(beta - TARGET_ANGLE);
-                arrowShape.style.fill = (deviation < 5) ? COLOR_GOOD : (deviation < 10) ? COLOR_OK : COLOR_BAD;
+ function startListening() { window.addEventListener('deviceorientation', handleOrientation); }
 
-                if (deviation < 5) {
-                    instructionMessageBox.style.display = 'block';
-                    if (greenZoneTimer === null) greenZoneTimer = setTimeout(startCountdownSequence, 4000);
-                } else {
-                    instructionMessageBox.style.display = 'none';
-                    if (greenZoneTimer) { clearTimeout(greenZoneTimer); greenZoneTimer = null; }
-                }
-                const offset = beta - TARGET_ANGLE;
-                scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (offset * SENSITIVITY)))}%`;
-            } else {
-                if (lastAlpha === null) lastAlpha = alpha;
-                
-                scanArrowContainer.style.top = '50%';
-                arrowShape.style.fill = '#3498db';
+ // --- Core Logic: Handle Orientation ---
+ async function handleOrientation(event) {
+  let { alpha, beta, gamma } = event;
+  if (alpha === null || beta === null || gamma === null) return;
 
-                let delta = alpha - lastAlpha;
-                if (delta < -180) delta += 360; 
-                if (delta > 180) delta -= 360;
-                
-                if (delta > 0 && delta < 45) {
-                    accumulatedRotation += delta;
-                }
-                lastAlpha = alpha;
+  currentHeading = alpha;
 
-                const startLeftPercent = 10, endLeftPercent = 90;
-                const leftRange = endLeftPercent - startLeftPercent;
-                const currentLeftPercent = startLeftPercent + (accumulatedRotation / 360) * leftRange;
-                scanArrowContainer.style.left = `calc(${Math.min(endLeftPercent, currentLeftPercent)}% - 29px)`;
+  // Smooth out the roll (gamma) value for smoother rotation
+  smoothedRoll = (smoothedRoll * (1 - SMOOTHING_FACTOR)) + (gamma * SMOOTHING_FACTOR);
+  const rotation = -smoothedRoll;
+  scanArrowContainer.style.transform = `rotate(${rotation}deg)`;
 
-                if (delta > 5) {
-                    slowDownMessage.style.display = 'block';
-                    if(slowDownTimer) clearTimeout(slowDownTimer);
-                    slowDownTimer = setTimeout(() => slowDownMessage.style.display = 'none', 1000);
-                }
+  if (scanState === 'pre-scan') {
+   // Vertical positioning of the arrow based on pitch (beta)
+   const pitchOffset = beta - TARGET_PITCH;
+   scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)))}%`;
 
-                const circumference = 282.7;
-                progressRing.style.strokeDashoffset = circumference - (accumulatedRotation / 360) * circumference;
-                
-                const segmentsCaptured = capturedImageCount;
-                const segmentsToCapture = Math.floor(accumulatedRotation / CAPTURE_ANGLE_INTERVAL) + 1;
-                if (segmentsToCapture > segmentsCaptured && capturedImageCount < TOTAL_IMAGES) {
-                    takePicture();
-                }
-            }
-        }
+   // Color change based on pitch deviation
+   const deviation = Math.abs(pitchOffset);
+   if (deviation < PITCH_TOLERANCE_GOOD) {
+   arrowShape.style.fill = COLOR_GOOD;
+   if (!isAligned && alignmentTimer === null) {
+    alignmentTimer = setTimeout(() => { setAlignedState(true); }, ALIGNMENT_HOLD_TIME);
+   }
+   } else {
+   arrowShape.style.fill = (deviation < PITCH_TOLERANCE_OK) ? COLOR_OK : COLOR_BAD;
+   if (alignmentTimer) { clearTimeout(alignmentTimer); alignmentTimer = null; }
+   if (isAligned) { setAlignedState(false); }
+   }
+  } else if (scanState === 'scanning') {
+   // This logic will be implemented in a future step.
+   // For now, let's keep the arrow centered and blue during scanning.
+   scanArrowContainer.style.top = '50%';
+   arrowShape.style.fill = '#3498db'; // A neutral blue color
+  }
+ }
 
-        async function startVideo() {
-            if (isStarting) return;
-            isStarting = true;
-            startCaptureButton.disabled = true;
+ // --- UI State Management ---
+ function setAlignedState(isNowAligned) {
+  isAligned = isNowAligned;
+  // In the future, this will enable the "Start" button.
+  // For now, it just updates the status text.
+  if (scanState === 'pre-scan') {
+   appStatus.textContent = isAligned ? 'Ready to Start' : 'Align to Start';
+  }
+ }
 
-            // Reset state for a new session
-            isCountdownActive = false; isCapturePhaseActive = false;
-            capturedImageCount = 0; lastAlpha = null; accumulatedRotation = 0;
-            if(greenZoneTimer) clearTimeout(greenZoneTimer);
-            greenZoneTimer = null;
-            thumbnailContainer.innerHTML = '';
-            scanArrowContainer.style.display = 'block';
-            scanArrowContainer.style.left = '10px';
-            progressCircle.style.display = 'none';
-            
-            const constraints = { video: { facingMode: 'environment' } };
 
-            function getOrientationPermission() {
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    return DeviceOrientationEvent.requestPermission();
-                }
-                return Promise.resolve(window.DeviceOrientationEvent ? 'granted' : 'denied');
-            }
+ // --- UNCHANGED FUNCTIONS (to be used in later steps) ---
 
-            try {
-                // --- Updated: --- Request permissions sequentially to prevent freezing
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                const orientationState = await getOrientationPermission();
-                
-                if (orientationState !== 'granted') {
-                   alert("Orientation permission is required to continue.");
-                   // The finally block will still run for cleanup
-                   return;
-                }
-                
-                videoElement.srcObject = stream;
-                const track = stream.getVideoTracks()[0];
-                imageCapture = new ImageCapture(track);
-                window.addEventListener('deviceorientation', handleOrientation);
+ function updateProgressDisplay(dataUrl, index) {
+  const frameDiv = document.createElement('div');
+  frameDiv.className = 'progress-frame';
+  frameDiv.style.backgroundImage = `url(${dataUrl})`;
+  frameDiv.addEventListener('click', () => showReviewImage(index));
+  progressDisplay.appendChild(frameDiv);
+ }
 
-                instructionScreen.style.display = 'none';
-                captureScreen.style.display = 'flex';
+ function toggleZoom() {
+  isZoomed = !isZoomed;
+  reviewImage.classList.toggle('zoomed-in', isZoomed);
+  reviewInstructions.style.display = isZoomed ? 'none' : 'block';
+  if (isZoomed) {
+   reviewOverlay.style.justifyContent = 'flex-start';
+   reviewOverlay.style.alignItems = 'flex-start';
+   requestAnimationFrame(() => {
+    reviewOverlay.scrollLeft = (reviewImage.scrollWidth - reviewOverlay.clientWidth) / 2;
+    reviewOverlay.scrollTop = (reviewImage.scrollHeight - reviewOverlay.clientHeight) / 2;
+   });
+  } else {
+   reviewOverlay.style.justifyContent = 'center';
+   reviewOverlay.style.alignItems = 'center';
+   reviewOverlay.scrollTop = 0;
+   reviewOverlay.scrollLeft = 0;
+  }
+ }
 
-            } catch (err) {
-                console.error("Error accessing media devices: ", err);
-                alert("Could not access the camera or sensors. Please grant permission.");
-            } finally {
-                // This block guarantees the button is re-enabled and state is reset.
-                isStarting = false;
-                startCaptureButton.disabled = false;
-            }
-        }
-    </script>
+ function showReviewImage(index) {
+  if ((scanState !== 'paused' && scanState !== 'complete') || index < 0 || index >= capturedFrames.length) return;
+  currentReviewIndex = index;
+  reviewImage.src = capturedFrames[currentReviewIndex];
+  reviewOverlay.style.display = 'flex';
+ }
+
+ function hideReviewImage() {
+  clearTimeout(tapTimer);
+  tapTimer = null;
+  reviewOverlay.style.display = 'none';
+  currentReviewIndex = -1;
+  if (isZoomed) { toggleZoom(); }
+ }
+
+ async function captureFrame() {
+  if (!imageCaptureController) {
+   const canvas = document.createElement('canvas');
+   canvas.width = videoElement.videoWidth;
+   canvas.height = videoElement.videoHeight;
+   canvas.getContext('2d').drawImage(videoElement, 0, 0);
+   const dataUrl = canvas.toDataURL('image/jpeg');
+   capturedFrames.push(dataUrl);
+   updateProgressDisplay(dataUrl, capturedFrames.length - 1);
+   return;
+  }
+  try {
+   const blob = await imageCaptureController.takePhoto();
+   const dataUrl = await new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+   });
+   capturedFrames.push(dataUrl);
+   updateProgressDisplay(dataUrl, capturedFrames.length - 1);
+  } catch (error) { console.error('takePhoto() error:', error); }
+ }
+
+ function resetScan() {
+  scanState = 'pre-scan'; capturedFrames = []; targetHeadings = [];
+  nextHeadingIndex = 0; isCapturing = false; progressDisplay.innerHTML = '';
+  // Will add button visibility logic later
+  reviewOverlay.style.display = 'none'; currentReviewIndex = -1;
+  videoElement.play(); setAlignedState(false);
+ }
+
+ // --- Event Listeners ---
+ startCaptureButton.addEventListener('click', requestAllPermissions);
+ permissionBtn.addEventListener('click', requestAllPermissions);
+
+ // Event listeners for review overlay (unchanged)
+ reviewOverlay.addEventListener('touchstart', (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+ }, { passive: true });
+ reviewOverlay.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  const touchEndX = e.changedTouches[0].screenX;
+  const touchEndY = e.changedTouches[0].screenY;
+  const deltaX = touchEndX - touchStartX;
+  const deltaY = touchEndY - touchStartY;
+  const isPan = Math.abs(deltaX) > GESTURE_THRESHOLD || Math.abs(deltaY) > GESTURE_THRESHOLD;
+  if (isZoomed) { if (!isPan) { toggleZoom(); } return; }
+  if (isPan) {
+   clearTimeout(tapTimer); tapTimer = null;
+   if (deltaX < -GESTURE_THRESHOLD) { currentReviewIndex = (currentReviewIndex + 1) % capturedFrames.length; }
+   else if (deltaX > GESTURE_THRESHOLD) { currentReviewIndex = (currentReviewIndex - 1 + capturedFrames.length) % capturedFrames.length; }
+   reviewImage.src = capturedFrames[currentReviewIndex];
+  } else {
+   if (tapTimer === null) {
+    tapTimer = setTimeout(() => { tapTimer = null; hideReviewImage(); }, DOUBLE_TAP_DELAY);
+   } else {
+    clearTimeout(tapTimer); tapTimer = null; toggleZoom();
+   }
+  }
+ });
+ // Submit button logic (unchanged) will be wired up later
+ async function submitAction() {
+  if (capturedFrames.length === 0) { appStatus.textContent = "No frames to submit!"; return; }
+  appStatus.textContent = "Zipping files...";
+  try {
+   const zip = new JSZip();
+   capturedFrames.forEach((dataUrl, index) => {
+    const paddedIndex = String(index + 1).padStart(2, '0');
+    const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
+    zip.file(`image_${paddedIndex}.jpg`, base64Data, { base64: true });
+   });
+   const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+   const downloadLink = document.createElement('a');
+   const url = URL.createObjectURL(zipBlob);
+   downloadLink.href = url;
+   downloadLink.download = 'room_scan.zip';
+   document.body.appendChild(downloadLink);
+   downloadLink.click();
+   document.body.removeChild(downloadLink);
+   URL.revokeObjectURL(url);
+   appStatus.textContent = "Download started!";
+  } catch(err) {
+   console.error("Error creating zip file:", err);
+   appStatus.textContent = "Error creating file!";
+  }
+ }
+
+ // --- Initial Setup ---
+ if (!window.DeviceOrientationEvent || !navigator.mediaDevices) {
+  permissionError.textContent = "Required browser features not supported.";
+  permissionOverlay.classList.remove('hidden');
+  instructionScreen.classList.add('hidden');
+  startCaptureButton.disabled = true;
+ }
+ });
+ </script>
 </body>
 </html>
