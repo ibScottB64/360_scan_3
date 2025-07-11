@@ -433,7 +433,6 @@
     // MODIFICATION: Corrected beep logic ramp
     const velocityRatio = Math.min(1, smoothedAngularVelocity / VELOCITY_WARNING_THRESHOLD);
     currentBeepInterval = MAX_BEEP_INTERVAL - (MAX_BEEP_INTERVAL - MIN_BEEP_INTERVAL) * velocityRatio;
-
     
     // Corrected Warning Logic
     let warningMessageToShow = null;
@@ -512,6 +511,7 @@
        scanArrowContainer.style.transform = 'rotate(0deg)';
        arrowShape.style.fill = 'var(--target-color-light)';
        arrowShape.style.stroke = '#FFFFFF';
+       submitAction();
      }
      isCapturing = false;
    }
