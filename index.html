@@ -324,7 +324,7 @@
 
  // --- Core Logic: Handle Orientation ---
  async function handleOrientation(event) {
-  if (isCountdownActive || scanState === 'complete') return; // MODIFIED: Added complete state check to freeze arrow
+  if (isCountdownActive || scanState === 'complete') return; // Unchanged: freeze arrow on complete
 
   let { alpha, beta, gamma } = event;
   if (alpha === null || beta === null || gamma === null) return;
@@ -332,13 +332,13 @@
   currentHeading = alpha;
   smoothedRoll = (smoothedRoll * (1 - SMOOTHING_FACTOR)) + (gamma * SMOOTHING_FACTOR);
   const rotation = -smoothedRoll;
-  scanArrowContainer.style.transform = `rotate(${rotation}deg)`; // MODIFIED: Corrected template literal from original code
+  scanArrowContainer.style.transform = `rotate(${rotation}deg)`;
 
   const pitchOffset = beta - TARGET_PITCH;
 
   if (scanState === 'pre-scan') {
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
-   scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`; // MODIFIED: Corrected template literal from original code
+   scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
    scanArrowContainer.style.left = '10px';
 
    const deviation = Math.abs(pitchOffset);
@@ -361,7 +361,7 @@
   } else if (scanState === 'scanning') {
    // --- Vertical and Rotational Alignment ---
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
-   scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`; // MODIFIED: Corrected template literal from original code
+   scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
 
    const misalignment = Math.sqrt(Math.pow(pitchOffset, 2) + Math.pow(smoothedRoll, 2));
     if (misalignment < SCAN_TOLERANCE) {
@@ -370,13 +370,17 @@
         arrowShape.style.fill = COLOR_OK; // Only white or yellow during scan
     }
 
-   // --- Horizontal Progress (MODIFIED FOR SMOOTHNESS) ---
-   let degreesRotated = startHeading - currentHeading;
-   if (degreesRotated > 180) degreesRotated -= 360;
-   if (degreesRotated < -180) degreesRotated += 360;
-
-   const arrowLeftPercent = 10 + (degreesRotated / 360) * 80; // Maps 0-360deg to 10-90%
-   scanArrowContainer.style.left = `${arrowLeftPercent}%`; // MODIFIED: Corrected template literal from original code
+   // --- MODIFICATION START: Corrected Horizontal Progress ---
+   let degreesRotated = (startHeading - currentHeading + 360) % 360;
+   // At the very start (before the first frame is indexed), a large positive rotation
+   // is more likely a small negative one. This prevents the arrow from jumping across
+   // the screen on a slight reverse turn.
+   if (nextHeadingIndex === 0 && degreesRotated > 180) {
+       degreesRotated -= 360;
+   }
+   const arrowLeftPercent = 10 + (degreesRotated / 360) * 80;
+   scanArrowContainer.style.left = `${arrowLeftPercent}%`;
+   // --- MODIFICATION END ---
 
    // --- Frame Capture Logic ---
    if (isCapturing || nextHeadingIndex >= targetHeadings.length) return;
@@ -395,13 +399,12 @@
        scanState = 'complete';
        appStatus.textContent = 'Scan Complete';
        
-       // --- MODIFICATION: Style and lock arrow on completion ---
-       scanArrowContainer.style.left = '90%'; // Lock to end of the visual track
-       scanArrowContainer.style.top = 'calc(50% - 8.5px)'; // Center on the red line
-       scanArrowContainer.style.transform = 'rotate(0deg)'; // Reset roll compensation
-       arrowShape.style.fill = 'var(--target-color-light)'; // Green color
-       arrowShape.style.stroke = '#FFFFFF'; // White outline
-       // Note: The scanLine is intentionally left visible
+       // Unchanged: Style and lock arrow on completion
+       scanArrowContainer.style.left = '90%';
+       scanArrowContainer.style.top = 'calc(50% - 8.5px)';
+       scanArrowContainer.style.transform = 'rotate(0deg)';
+       arrowShape.style.fill = 'var(--target-color-light)';
+       arrowShape.style.stroke = '#FFFFFF';
      }
      isCapturing = false;
    }
@@ -438,7 +441,7 @@
  function updateProgressDisplay(dataUrl, index) {
   const frameDiv = document.createElement('div');
   frameDiv.className = 'progress-frame';
-  frameDiv.style.backgroundImage = `url(${dataUrl})`; // MODIFIED: Corrected template literal from original code
+  frameDiv.style.backgroundImage = `url(${dataUrl})`;
   frameDiv.addEventListener('click', () => showReviewImage(index));
   progressDisplay.appendChild(frameDiv);
  }
@@ -526,7 +529,7 @@
    capturedFrames.forEach((dataUrl, index) => {
     const paddedIndex = String(index + 1).padStart(2, '0');
     const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
-    zip.file(`image_${paddedIndex}.jpeg`, base64Data, { base64: true }); // MODIFIED: Corrected template literal from original code
+    zip.file(`image_${paddedIndex}.jpeg`, base64Data, { base64: true });
    });
    const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
    const downloadLink = document.createElement('a');
