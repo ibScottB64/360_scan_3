@@ -83,13 +83,13 @@
   display: none; position: absolute;
   bottom: calc(50% + 20px); /* Positioned 20px above the vertical center */
   left: 50%; transform: translateX(-50%);
-  width: 80%; max-width: 320px; /* MODIFICATION: Adjusted width */
+  width: 70%; max-width: 300px;
   background-color: rgba(190, 190, 190, 0.85);
   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   color: #000; font-weight: 500; padding: 1rem; border-radius: 15px;
   text-align: center; font-size: 0.9rem; line-height: 1.4; z-index: 20;
  }
- /* MODIFICATION: Style for the reset link */
+ /* Style for the reset link */
  #instructionResetLink {
     display: block;
     margin-top: 0.75rem;
@@ -158,7 +158,7 @@
       </svg>
     </div>
     <div id="scanLine" class="scan-line"></div>
-    <!-- MODIFICATION: New structure for the message box -->
+    <!-- Structure for the message box -->
     <div id="instructionMessageBox">
         <span id="instructionMessageText"></span>
         <a id="instructionResetLink" class="hidden">Let's start over and give it another try.</a>
@@ -194,7 +194,6 @@
  const arrowShape = document.getElementById('arrow-shape');
  const scanLine = document.getElementById('scanLine');
  const instructionMessageBox = document.getElementById('instructionMessageBox');
-  // MODIFICATION: New references for the message box content
  const instructionMessageText = document.getElementById('instructionMessageText');
  const instructionResetLink = document.getElementById('instructionResetLink');
  const countdownDisplay = document.getElementById('countdownDisplay');
@@ -224,9 +223,11 @@
  // Alignment tolerances
  const PITCH_TOLERANCE_GOOD = 5;
  const PITCH_TOLERANCE_OK = 10;
- const SCAN_TOLERANCE = 10; // Looser tolerance for during scan
+  // MODIFICATION: Replaced SCAN_TOLERANCE with specific pitch/roll values
+ const PITCH_SCAN_TOLERANCE = 5;  // Halved from original 10
+ const ROLL_SCAN_TOLERANCE = 20;  // Doubled from original 10
 
-  // Velocity thresholds (degrees per second)
+  // MODIFICATION: Velocity thresholds reverted to original values
   const VELOCITY_WARNING_THRESHOLD = 60; // deg/s
   const VELOCITY_DANGER_THRESHOLD = 120; // deg/s
 
@@ -331,12 +332,10 @@
 
  async function beginCaptureProcess() {
   scanState = 'scanning';
-  // MODIFICATION: app-status text removed
   startHeading = currentHeading;
   targetHeadings = [];
   nextHeadingIndex = 0;
   
-  // Initialize velocity tracking variables
   previousHeading = currentHeading;
   lastHeadingTimestamp = Date.now();
 
@@ -403,12 +402,11 @@
       return;
     }
 
-    const misalignment = Math.sqrt(Math.pow(pitchOffset, 2) + Math.pow(smoothedRoll, 2));
-
+    // MODIFICATION: Check pitch and roll against their separate tolerances
     if (angularVelocity > VELOCITY_WARNING_THRESHOLD) {
       arrowShape.style.fill = COLOR_OK;
       showInstructionMessage("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
-    } else if (misalignment > SCAN_TOLERANCE) {
+    } else if (Math.abs(pitchOffset) > PITCH_SCAN_TOLERANCE || Math.abs(smoothedRoll) > ROLL_SCAN_TOLERANCE) {
       arrowShape.style.fill = COLOR_OK;
       showInstructionMessage("Realign the arrow by rotating your phone to the left or right or forward or back.");
     } else {
@@ -521,7 +519,7 @@
   }
  }
 
- // MODIFICATION: New Popup and Reset Functions
+ // Popup and Reset Functions
  function showInstructionMessage(message, showReset = false) {
     instructionMessageText.textContent = message;
     instructionResetLink.classList.toggle('hidden', !showReset);
@@ -567,7 +565,7 @@
  // --- Event Listeners ---
  startCaptureButton.addEventListener('click', requestAllPermissions);
  permissionBtn.addEventListener('click', requestAllPermissions);
-  instructionResetLink.addEventListener('click', resetAppToInstructions); // MODIFIED
+  instructionResetLink.addEventListener('click', resetAppToInstructions);
 
  // Event listeners for review overlay (unchanged)
  reviewOverlay.addEventListener('touchstart', (e) => {
