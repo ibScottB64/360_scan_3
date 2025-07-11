@@ -83,11 +83,20 @@
   display: none; position: absolute;
   bottom: calc(50% + 20px); /* Positioned 20px above the vertical center */
   left: 50%; transform: translateX(-50%);
-  width: 70%; max-width: 300px;
+  width: 80%; max-width: 320px; /* MODIFICATION: Adjusted width */
   background-color: rgba(190, 190, 190, 0.85);
   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   color: #000; font-weight: 500; padding: 1rem; border-radius: 15px;
   text-align: center; font-size: 0.9rem; line-height: 1.4; z-index: 20;
+ }
+ /* MODIFICATION: Style for the reset link */
+ #instructionResetLink {
+    display: block;
+    margin-top: 0.75rem;
+    color: #007BFF;
+    text-decoration: underline;
+    font-weight: 500;
+    cursor: pointer;
  }
  #countdownDisplay {
   display: none; position: absolute; top: 50%; left: 50%;
@@ -116,45 +125,6 @@
   position: absolute; bottom: 20px; left: 0; right: 0; text-align: center;
   color: rgba(255,255,255,0.8); font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none;
  }
- /* --- MODIFICATION: Warning Popup Styles --- */
- #warningOverlay {
-   position: fixed; top: 0; left: 0; z-index: 150;
-   width: 100%; height: 100%;
-   background-color: rgba(0, 0, 0, 0.6);
-   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-   display: flex;
-   justify-content: center;
-   align-items: center;
-   text-align: center;
-   padding: 20px;
-   box-sizing: border-box;
- }
- #warningOverlay.hidden { display: none; }
- .warning-content {
-   background-color: rgba(40, 40, 40, 0.9);
-   color: #f0f0f0;
-   padding: 2rem;
-   border-radius: 15px;
-   max-width: 320px;
-   border: 1px solid #666;
- }
- #warningMessage {
-   font-size: 1.1rem;
-   line-height: 1.5;
-   margin: 0 0 1.5rem 0;
- }
- #resetLink {
-   display: inline-block;
-   color: #4a90e2;
-   text-decoration: none;
-   font-weight: 500;
-   font-size: 1rem;
-   padding: 0.5rem 1rem;
-   border-radius: 8px;
-   background-color: rgba(74, 144, 226, 0.2);
-   cursor: pointer;
- }
- #resetLink.hidden { display: none; }
  </style>
 </head>
 <body>
@@ -188,15 +158,17 @@
       </svg>
     </div>
     <div id="scanLine" class="scan-line"></div>
+    <!-- MODIFICATION: New structure for the message box -->
     <div id="instructionMessageBox">
-       Get ready to slowly pan the camera... stay on the red line, and keep steady for best results.
+        <span id="instructionMessageText"></span>
+        <a id="instructionResetLink" class="hidden">Let's start over and give it another try.</a>
     </div>
     <div id="countdownDisplay"></div>
    </div>
   </div>
  </div>
  <div class="progress-display" id="progress-display"></div>
- <footer class="app-status" id="app-status">Align to Start</footer>
+ <footer class="app-status" id="app-status"></footer>
 </div>
 
 <!-- Overlays and other elements from File 1 -->
@@ -208,14 +180,6 @@
 <div id="review-overlay" class="hidden">
  <img id="review-image" alt="Reviewed Frame">
  <p id="review-instructions">Tap to Exit | Double-Tap to Zoom | Swipe to Scroll</p>
-</div>
-
-<!-- MODIFICATION: Warning and Reset Overlay -->
-<div id="warningOverlay" class="hidden">
-  <div class="warning-content">
-    <p id="warningMessage"></p>
-    <a id="resetLink" class="hidden">Let's start over and give it another try.</a>
-  </div>
 </div>
 
  <script>
@@ -230,6 +194,9 @@
  const arrowShape = document.getElementById('arrow-shape');
  const scanLine = document.getElementById('scanLine');
  const instructionMessageBox = document.getElementById('instructionMessageBox');
+  // MODIFICATION: New references for the message box content
+ const instructionMessageText = document.getElementById('instructionMessageText');
+ const instructionResetLink = document.getElementById('instructionResetLink');
  const countdownDisplay = document.getElementById('countdownDisplay');
  const appStatus = document.getElementById('app-status');
  const progressDisplay = document.getElementById('progress-display');
@@ -239,11 +206,6 @@
  const permissionOverlay = document.getElementById('permission-overlay');
  const permissionBtn = document.getElementById('permission-button');
  const permissionError = document.getElementById('permission-error');
-  // MODIFICATION: New DOM elements
- const warningOverlay = document.getElementById('warningOverlay');
- const warningMessage = document.getElementById('warningMessage');
- const resetLink = document.getElementById('resetLink');
-
 
  // --- State and Configuration Variables ---
  let countdownStartTimer = null, isCountdownActive = false;
@@ -264,7 +226,7 @@
  const PITCH_TOLERANCE_OK = 10;
  const SCAN_TOLERANCE = 10; // Looser tolerance for during scan
 
-  // MODIFICATION: Velocity thresholds (degrees per second)
+  // Velocity thresholds (degrees per second)
   const VELOCITY_WARNING_THRESHOLD = 60; // deg/s
   const VELOCITY_DANGER_THRESHOLD = 120; // deg/s
 
@@ -285,7 +247,7 @@
  const DOUBLE_TAP_DELAY = 300;
  const GESTURE_THRESHOLD = 50;
 
-  // MODIFICATION: State for velocity calculation
+  // State for velocity calculation
   let lastHeadingTimestamp = 0;
   let previousHeading = 0;
 
@@ -349,7 +311,7 @@
  function startCountdownSequence() {
   isCountdownActive = true;
   countdownStartTimer = null;
-  instructionMessageBox.style.display = 'none';
+  hideInstructionMessage();
   countdownDisplay.style.display = 'block';
 
   let count = 3;
@@ -369,12 +331,12 @@
 
  async function beginCaptureProcess() {
   scanState = 'scanning';
-  appStatus.textContent = 'Rotate slowly to your right';
+  // MODIFICATION: app-status text removed
   startHeading = currentHeading;
   targetHeadings = [];
   nextHeadingIndex = 0;
   
-  // MODIFICATION: Initialize velocity tracking variables
+  // Initialize velocity tracking variables
   previousHeading = currentHeading;
   lastHeadingTimestamp = Date.now();
 
@@ -401,7 +363,6 @@
   const pitchOffset = beta - TARGET_PITCH;
 
   if (scanState === 'pre-scan') {
-    hideWarningPopup();
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
    scanArrowContainer.style.left = '10px';
@@ -409,27 +370,24 @@
    const deviation = Math.abs(pitchOffset);
    if (deviation < PITCH_TOLERANCE_GOOD) {
    arrowShape.style.fill = COLOR_GOOD;
-   appStatus.textContent = 'Hold Steady to Begin';
-   instructionMessageBox.style.display = 'block';
+   showInstructionMessage("Get ready to slowly pan the camera... stay on the red line, and keep steady for best results.");
    if (countdownStartTimer === null) {
     countdownStartTimer = setTimeout(startCountdownSequence, COUNTDOWN_HOLD_TIME);
    }
    } else {
    arrowShape.style.fill = (deviation < PITCH_TOLERANCE_OK) ? COLOR_OK : COLOR_BAD;
-   appStatus.textContent = 'Align to Start';
-   instructionMessageBox.style.display = 'none';
+   hideInstructionMessage();
    if (countdownStartTimer) {
     clearTimeout(countdownStartTimer);
     countdownStartTimer = null;
    }
    }
   } else if (scanState === 'scanning') {
-    // --- MODIFICATION: Velocity and Warning Logic ---
     const currentTime = Date.now();
-    const deltaTime = (currentTime - lastHeadingTimestamp) / 1000; // in seconds
+    const deltaTime = (currentTime - lastHeadingTimestamp) / 1000;
     let angularVelocity = 0;
 
-    if (deltaTime > 0.01) { // Avoid division by zero and noisy data
+    if (deltaTime > 0.01) {
       let headingDiff = currentHeading - previousHeading;
       if (headingDiff < -180) headingDiff += 360;
       if (headingDiff > 180) headingDiff -= 360;
@@ -441,29 +399,26 @@
     if (angularVelocity > VELOCITY_DANGER_THRESHOLD) {
       scanState = 'error';
       arrowShape.style.fill = COLOR_BAD;
-      showWarningPopup("You rotated the camera too quickly, but you're doing great!", true);
-      return; // Stop processing
+      showInstructionMessage("You rotated the camera too quickly, but you're doing great!", true);
+      return;
     }
 
     const misalignment = Math.sqrt(Math.pow(pitchOffset, 2) + Math.pow(smoothedRoll, 2));
 
     if (angularVelocity > VELOCITY_WARNING_THRESHOLD) {
       arrowShape.style.fill = COLOR_OK;
-      showWarningPopup("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
+      showInstructionMessage("Please slow down. Rotating too quickly can cause motion blur and reduce video quality.");
     } else if (misalignment > SCAN_TOLERANCE) {
       arrowShape.style.fill = COLOR_OK;
-      showWarningPopup("Realign the arrow by rotating your phone to the left or right or forward or back.");
+      showInstructionMessage("Realign the arrow by rotating your phone to the left or right or forward or back.");
     } else {
       arrowShape.style.fill = COLOR_GOOD;
-      hideWarningPopup();
+      hideInstructionMessage();
     }
-    // --- END MODIFICATION ---
 
-   // --- Vertical and Rotational Alignment ---
    const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
    scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
 
-   // --- Horizontal Progress ---
    let degreesRotated = (startHeading - currentHeading + 360) % 360;
    if (nextHeadingIndex === 0 && degreesRotated > 180) {
        degreesRotated -= 360;
@@ -471,7 +426,6 @@
    const arrowLeftPercent = 10 + (degreesRotated / 360) * 80;
    scanArrowContainer.style.left = `${arrowLeftPercent}%`;
 
-   // --- Frame Capture Logic ---
    if (isCapturing || nextHeadingIndex >= targetHeadings.length) return;
 
    const target = targetHeadings[nextHeadingIndex];
@@ -486,8 +440,7 @@
 
      if (capturedFrames.length >= TOTAL_FRAMES) {
        scanState = 'complete';
-       appStatus.textContent = 'Scan Complete';
-       hideWarningPopup();
+       hideInstructionMessage();
        scanArrowContainer.style.left = '90%';
        scanArrowContainer.style.top = 'calc(50% - 8.5px)';
        scanArrowContainer.style.transform = 'rotate(0deg)';
@@ -568,31 +521,22 @@
   }
  }
 
- // --- MODIFICATION: New Popup and Reset Functions ---
- function showWarningPopup(message, showReset = false) {
-    if (warningMessage.textContent === message && !warningOverlay.classList.contains('hidden')) {
-        return; // Avoid flickering if message is the same
-    }
-    warningMessage.textContent = message;
-    if (showReset) {
-        resetLink.classList.remove('hidden');
-    } else {
-        resetLink.classList.add('hidden');
-    }
-    warningOverlay.classList.remove('hidden');
+ // MODIFICATION: New Popup and Reset Functions
+ function showInstructionMessage(message, showReset = false) {
+    instructionMessageText.textContent = message;
+    instructionResetLink.classList.toggle('hidden', !showReset);
+    instructionMessageBox.style.display = 'block';
  }
 
- function hideWarningPopup() {
-    warningOverlay.classList.add('hidden');
+ function hideInstructionMessage() {
+    instructionMessageBox.style.display = 'none';
  }
 
  function resetAppToInstructions() {
-    // Stop camera
     if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
-    // Reset all state
     scanState = 'pre-scan';
     capturedFrames = [];
     targetHeadings = [];
@@ -602,33 +546,28 @@
     startHeading = 0;
     countdownStartTimer = null;
     
-    // Reset UI
     progressDisplay.innerHTML = '';
-    appStatus.textContent = 'Align to Start';
-    hideWarningPopup();
+    hideInstructionMessage();
     appContainer.classList.add('hidden');
     instructionScreen.classList.remove('hidden');
     startCaptureButton.disabled = false;
     startCaptureButton.textContent = 'Capture video';
-    // Reset arrow style in case it was modified
     arrowShape.style.stroke = 'black';
-    arrowShape.style.fill = COLOR_BAD; // Default starting color
+    arrowShape.style.fill = COLOR_BAD;
  }
 
  // --- UNCHANGED FUNCTIONS ---
  function resetScan() {
   scanState = 'pre-scan'; capturedFrames = []; targetHeadings = [];
   nextHeadingIndex = 0; isCapturing = false; progressDisplay.innerHTML = '';
-  // Will add button visibility logic later
   reviewOverlay.style.display = 'none'; currentReviewIndex = -1;
   videoElement.play();
-  appStatus.textContent = 'Align to Start';
  }
 
  // --- Event Listeners ---
  startCaptureButton.addEventListener('click', requestAllPermissions);
  permissionBtn.addEventListener('click', requestAllPermissions);
-  resetLink.addEventListener('click', resetAppToInstructions);
+  instructionResetLink.addEventListener('click', resetAppToInstructions); // MODIFIED
 
  // Event listeners for review overlay (unchanged)
  reviewOverlay.addEventListener('touchstart', (e) => {
@@ -658,7 +597,7 @@
  });
  // Submit button logic (unchanged) will be wired up later
  async function submitAction() {
-  if (capturedFrames.length === 0) { appStatus.textContent = "No frames to submit!"; return; }
+  if (capturedFrames.length === 0) { return; }
   appStatus.textContent = "Zipping files...";
   try {
    const zip = new JSZip();
