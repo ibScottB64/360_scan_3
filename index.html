@@ -66,8 +66,7 @@
   border: 3px dashed rgba(255, 255, 255, 0.7); border-radius: 10px;
  }
  .scan-arrow {
-  position: absolute; top: 50%; left: 10px; /* JS will adjust 'top' */
-  transform: translateY(-50%); /* This will be set in JS with rotation */
+  position: absolute; left: 10px; /* JS will set top and transform */
   width: 58px; height: 43px; transition: top 0.1s linear;
  }
  #arrow-shape { transition: fill 0.2s linear; }
@@ -79,7 +78,7 @@
   display: none; position: absolute;
   bottom: calc(50% + 20px); /* Positioned 20px above the vertical center */
   left: 50%; transform: translateX(-50%);
-  width: 75%; max-width: 300px;
+  width: 70%; max-width: 300px; /* Made narrower */
   background-color: rgba(190, 190, 190, 0.85);
   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   color: #000; font-weight: 500; padding: 1rem; border-radius: 15px;
@@ -203,6 +202,7 @@
  const PITCH_TOLERANCE_GOOD = 5;
  const PITCH_TOLERANCE_OK = 10;
  const SENSITIVITY = 1.5; // Multiplier for arrow vertical movement
+  const ARROW_HALF_HEIGHT_PX = 21.5; // Half of the 43px arrow container height
 
  // Colors for alignment arrow
  const COLOR_GOOD = '#FFFFFF', COLOR_OK = '#f1c40f', COLOR_BAD = '#e74c3c';
@@ -311,16 +311,17 @@
 
   currentHeading = alpha;
 
-  // Smooth out the roll (gamma) value
+  // Smooth out the roll (gamma) value and set rotation
   smoothedRoll = (smoothedRoll * (1 - SMOOTHING_FACTOR)) + (gamma * SMOOTHING_FACTOR);
   const rotation = -smoothedRoll;
+  scanArrowContainer.style.transform = `rotate(${rotation}deg)`;
 
   const pitchOffset = beta - TARGET_PITCH;
 
   if (scanState === 'pre-scan') {
-   // Set arrow position and rotation
-   scanArrowContainer.style.top = `${Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)))}%`;
-   scanArrowContainer.style.transform = `translateY(-50%) rotate(${rotation}deg)`;
+   // Calculate arrow's vertical position using calc() for precision
+   const topPercent = Math.max(5, Math.min(95, 50 + (pitchOffset * SENSITIVITY)));
+   scanArrowContainer.style.top = `calc(${topPercent}% - ${ARROW_HALF_HEIGHT_PX}px)`;
 
    // Color change and countdown logic based on pitch deviation
    const deviation = Math.abs(pitchOffset);
@@ -341,9 +342,8 @@
    }
    }
   } else if (scanState === 'scanning') {
-   // Keep arrow centered and rotated during scan
-   scanArrowContainer.style.top = '50%';
-   scanArrowContainer.style.transform = `translateY(-50%) rotate(${rotation}deg)`;
+   // Keep arrow centered during scan, using the same precise calc() method
+   scanArrowContainer.style.top = `calc(50% - ${ARROW_HALF_HEIGHT_PX}px)`;
    arrowShape.style.fill = '#3498db'; // A neutral blue color
   }
  }
