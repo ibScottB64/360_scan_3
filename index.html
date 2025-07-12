@@ -226,9 +226,9 @@
  const PITCH_SCAN_TOLERANCE = 5;
  const ROLL_SCAN_TOLERANCE = 20;
 
-  // Velocity thresholds (degrees per second)
-  const VELOCITY_WARNING_THRESHOLD = 15;
-  const VELOCITY_DANGER_THRESHOLD = 30;
+  // MODIFICATION: Velocity thresholds adjusted
+  const VELOCITY_WARNING_THRESHOLD = 30; // deg/s
+  const VELOCITY_DANGER_THRESHOLD = 60; // deg/s
 
  const SENSITIVITY = 1.5;
   const ARROW_HALF_HEIGHT_PX = 21.5;
@@ -400,12 +400,13 @@
     countdownStartTimer = setTimeout(startCountdownSequence, COUNTDOWN_HOLD_TIME);
    }
    } else {
-   arrowShape.style.fill = (deviation < PITCH_TOLERANCE_OK) ? COLOR_BAD : COLOR_BAD;
-   hideInstructionMessage();
-   if (countdownStartTimer) {
-    clearTimeout(countdownStartTimer);
-    countdownStartTimer = null;
-   }
+     // MODIFICATION: Any non-good state is yellow
+     arrowShape.style.fill = COLOR_OK;
+     hideInstructionMessage();
+     if (countdownStartTimer) {
+        clearTimeout(countdownStartTimer);
+        countdownStartTimer = null;
+     }
    }
   } else if (scanState === 'scanning') {
     let degreesRotated = (startHeading - currentHeading + 360) % 360;
@@ -698,6 +699,7 @@
  
  async function submitAction() {
   if (capturedFrames.length === 0) { return; }
+  appStatus.textContent = ""; // MODIFICATION: Removed status text
   try {
    const zip = new JSZip();
    capturedFrames.forEach((dataUrl, index) => {
@@ -714,8 +716,10 @@
    downloadLink.click();
    document.body.removeChild(downloadLink);
    URL.revokeObjectURL(url);
+   appStatus.textContent = ""; // MODIFICATION: Removed status text
   } catch(err) {
    console.error("Error creating zip file:", err);
+   appStatus.textContent = ""; // MODIFICATION: Removed status text
   }
  }
 
